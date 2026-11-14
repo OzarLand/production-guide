@@ -1,0 +1,78 @@
+id: PG-37
+category: networking
+title: Booted without its SSH key?
+situation: >-
+  A new instance is `ACTIVE` with an address, but its key does not work, its user data did not run and its
+  hostname is a default one. It booted without metadata.
+
+diagram:
+  type: chain
+  caption: The metadata request of a first boot
+  nodes:
+    - label: Guest
+      sub: Asks 169.254.169.254, then gives up
+      icon: monitor
+      tone: warn
+      badge: clock
+    - label: haproxy
+      sub: In the network's DHCP namespace
+      icon: route
+      tone: mute
+    - label: Metadata agent
+      sub: Not alive. The request goes nowhere
+      icon: server
+      tone: stop
+    - label: Nova metadata API
+      sub: Never asked
+      icon: cloud
+      tone: mute
+  links: [ok, broken, broken]
+  note: >-
+    It stays broken after the outage: the first boot, which applies the key and the user data, is over.
+
+checks:
+  - label: ACTIVE, an address, no fault
+    hint: openstack server show <id> -c status -c addresses -c fault
+  - label: "Console: metadata requests failed"
+    hint: openstack console log show <id> | grep -iE 'metadata|169.254'
+  - label: Is any metadata agent alive?
+    hint: openstack network agent list --agent-type metadata
+  - label: Is Nova's metadata API up?
+    hint: its service or container, and its log, on the controllers
+
+caution:
+  - level: destructive
+    text: >-
+      A rebuild replaces the root disk with a fresh image: everything written to it is lost. Only with the
+      owner's agreement, or a snapshot.
+  - level: know
+    text: >-
+      Starting the agents repairs new instances only. Whether a reboot is enough for the others depends on
+      the image.
+
+lesson: An instance gets its identity at first boot. Miss it, and the damage outlives the outage.
+
+runbook:
+  path: networking/new-instance-boots-without-metadata.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - networking/new-instance-gets-no-ip-dhcp-agents-down.md
+
+scope: >-
+  Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS, with every metadata agent down and CirrOS
+  guests, which read the metadata at every boot. Not reproduced: agents alive but Nova's metadata API not
+  answering. cloud-init images were not tested. Instances booted with a config drive do not use the metadata
+  service for this. With OVN the metadata path is different.
+
+linkedin:
+  title: "ACTIVE, with an address, and no SSH key: the instance booted without metadata"
+  caption: |
+    A new instance is ACTIVE. It has its address. And nobody can log in: the SSH key was never installed, the user data never ran, the hostname is a default one.
+
+    At first boot, the guest asks 169.254.169.254 for its metadata. With ML2/OVS that request goes through a haproxy in the network's DHCP namespace, then the Neutron metadata agent, then Nova's metadata API. With every metadata agent down, it goes nowhere. The image waits, then boots without it.
+
+    Nova reports nothing. Instances created earlier are fine.
+
+    The part that hurts: it stays broken after the agents are back. The first boot, the one that applies the key and the user data, is over. Every instance created during the outage has to be dealt with, one by one.
+  hashtags: [OpenStack, Neutron, Nova, CloudInit, CloudOperations, OzarLand]

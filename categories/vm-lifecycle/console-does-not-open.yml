@@ -1,0 +1,80 @@
+id: PG-31
+category: vm-lifecycle
+title: Console does not open?
+situation: >-
+  The noVNC page stays blank, fails at once, or the token "is invalid or has expired". The instance itself
+  is not affected: only its console.
+
+diagram:
+  type: chain
+  caption: One console connection, four hops
+  nodes:
+    - label: Browser
+      sub: Opens the public URL of the proxy
+      icon: globe
+      tone: ink
+    - label: Console proxy
+      sub: Checks the token and its lifetime
+      icon: shield
+      tone: ink
+    - label: Compute
+      sub: VNC address and port of the guest
+      icon: server
+      tone: ink
+    - label: Guest
+      sub: Its VNC device, in libvirt
+      icon: monitor
+      tone: ink
+  note: >-
+    A console URL is valid for `[consoleauth] token_ttl` seconds, and stops matching if the instance moves.
+    Open it at once.
+
+checks:
+  - label: Can the API build a URL?
+    hint: openstack console url show <server-id>
+  - label: The instance and its compute
+    hint: openstack compute service list --host <compute>
+  - label: Why the proxy refused
+    hint: nova-novncproxy.log, on the controllers
+  - label: The guest's VNC server
+    hint: virsh vncdisplay <instance-name>
+
+caution:
+  - level: state-changing
+    text: >-
+      Restarting the console proxy disconnects every open console of the platform.
+  - level: know
+    text: >-
+      Through Kolla-Ansible's HAProxy, a session is cut after one hour. Users reconnect with a new URL.
+
+lesson: A console is a chain of four hops. The proxy log says which one refused.
+
+runbook:
+  path: lifecycle/console-not-available-or-disconnects.md
+  status: draft
+  release: "2026.1"
+
+scope: >-
+  The runbook is a draft, written from the Nova 2026.1 remote console guide and source and from Kolla-Ansible
+  2026.1; it was not reproduced on a lab. It follows noVNC, Kolla-Ansible's default; SPICE is covered only by
+  equivalence. Common causes: an expired token, a public URL the browser cannot use, a proxy that cannot
+  reach the compute's VNC ports, or the proxy service down. VNC TLS, serial consoles and Horizon's own
+  configuration are not covered.
+
+linkedin:
+  title: "The instance console does not open: four hops, one log"
+  caption: |
+    "The console doesn't work." It is one of the vaguest tickets an OpenStack team gets, and usually nothing is wrong with the instance.
+
+    A console connection is a chain of four hops:
+    → the browser opens the public URL of the console proxy
+    → the proxy checks the token, and its lifetime
+    → the proxy connects to the compute, on the guest's VNC port
+    → the guest's own VNC device, in libvirt
+
+    Each one fails differently: a blank page, an Origin error, "the token is invalid or has expired", a connection refused. The console proxy log tells you which hop refused.
+
+    The most common cause is also the most boring one: a URL opened too late, or reused.
+
+    Source runbook status: draft.
+  hashtags: [OpenStack, Nova, Troubleshooting, CloudOperations, SRE, OzarLand]

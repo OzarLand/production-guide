@@ -10,3 +10,5 @@
 - **PG-26** [The API answers 503?](api-returns-503.md): A 503 from HAProxy is a messenger. Find out why the backends fail their check.
 - **PG-27** [401 with a valid token?](401-with-a-valid-token.md): A fresh token hides the problem. Test with one older than the token cache.
 - **PG-28** [Out of database connections?](database-connections-exhausted.md): Three limits, three messages. The message tells you which layer ran out.
+- **PG-42** [Conductor or scheduler down?](conductor-or-scheduler-down.md): With the conductor gone, every compute looks down. Nothing is wrong on the hosts.
+- **PG-43** [Provisioning fails everywhere?](provisioning-fails-everywhere.md): When everything fails at once, look at what everything shares.

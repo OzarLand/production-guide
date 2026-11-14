@@ -1,0 +1,77 @@
+id: PG-35
+category: compute
+title: After a reboot, VMs stay off?
+situation: >-
+  A rebooted compute answers again, but its instances stay `SHUTOFF`, or run without network while Nova
+  shows `ACTIVE`.
+
+diagram:
+  type: branches
+  head: [You find, The cause is]
+  split: 48
+  rows:
+    - see: "Instances `SHUTOFF`, nothing else wrong"
+      means: Nova's default
+      sub: Guests are not resumed at host boot
+      tone: mute
+    - see: A service or container did not come back
+      means: A failed start
+      sub: "If it is `ovs-vswitchd`: no network"
+      tone: stop
+    - see: "External interface or bond `DOWN`"
+      means: The host's network
+      sub: Not in the host's own configuration
+      tone: warn
+    - see: A smaller MTU than the other computes
+      means: Set by hand, then lost
+      sub: Ping works, large transfers stall
+      tone: warn
+
+checks:
+  - label: Instances, services, agents
+    hint: openstack server list --all-projects --host <host> --long
+  - label: Did every service come back?
+    hint: "Kolla-Ansible: systemctl list-units 'kolla-*' --state=failed"
+  - label: Does Nova resume guests?
+    hint: grep resume_guests_state_on_host_boot nova.conf
+  - label: Interfaces up, expected MTU?
+    hint: ip -br link
+
+caution:
+  - level: state-changing
+    text: >-
+      Check with the owner before starting a `SHUTOFF` instance: one stopped on purpose looks the same.
+  - level: know
+    text: >-
+      Whatever was set by hand before the reboot is gone: an MTU, an interface brought up, an address moved.
+
+lesson: A reboot brings back what is written down. Nova does not restart guests by default.
+
+runbook:
+  path: recovery/after-a-compute-reboot-instances-shutoff-or-without-network.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - networking/ovs-vswitchd-down-on-compute.md
+    - networking/tunnel-mtu-mismatch-large-packets-dropped.md
+
+scope: >-
+  Written from the Nova 2026.1 configuration reference and Kolla-Ansible 2026.1, which does not set
+  resume_guests_state_on_host_boot. Observed on one all-in-one lab: instances staying SHUTOFF, with and
+  without the option, and an external interface down. Not observed: a container that does not come back, a
+  lost MTU, and the reboot of a compute of a multinode platform. ML2/OVN and DPDK are not covered.
+
+linkedin:
+  title: "After a compute reboot, the instances stay SHUTOFF. That is the default."
+  caption: |
+    A compute was rebooted for a kernel update. It is back, it answers SSH, nova-compute is up. And every instance on it is SHUTOFF.
+
+    Nothing is broken. resume_guests_state_on_host_boot defaults to False: Nova does not start the guests that were running before a host reboot. Someone has to.
+
+    The other surprises after a reboot come from the same place: what was never written down.
+    → a service that did not come back, and if it is ovs-vswitchd, every instance is cut off
+    → an external interface or bond that is DOWN
+    → an MTU that was set by hand, months ago, and is back to the default
+
+    One caution before starting everything again: an instance that was stopped on purpose before the reboot looks exactly like the others.
+  hashtags: [OpenStack, Nova, Maintenance, CloudOperations, SRE, OzarLand]

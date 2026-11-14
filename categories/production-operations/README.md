@@ -7,3 +7,4 @@
 - **PG-18** [Restarting an agent on a compute?](before-restarting-an-agent.md): Before a restart, know which process carries the workload, and what keeps it alive.
 - **PG-19** [A build failed. Which service?](trace-one-request.md): The last service that logged the request id is where it stopped. Start there.
 - **PG-20** [Cleaning up stale records?](cleaning-up-stale-records.md): Project tools first, the database last. And first of all: is this record true?
+- **PG-44** [Logs do not line up?](logs-do-not-line-up.md): Before trusting a timeline built from several hosts, compare their clocks.

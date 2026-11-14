@@ -1,0 +1,81 @@
+id: PG-44
+category: production-operations
+title: Logs do not line up?
+situation: >-
+  Following one incident across hosts, the lines of one compute appear minutes before the events that caused
+  them. Its clock has drifted, and nothing alerts.
+
+diagram:
+  type: compare
+  caption: A compute a few minutes off (lab, 300 s back)
+  columns:
+    - kicker: What it does not break
+      title: The platform
+      icon: server
+      tone: mute
+      points:
+        - "`nova-compute` stays up, agents alive"
+        - New instances boot
+        - No warning in any log
+      verdict: Nothing fails
+    - kicker: What it breaks
+      title: Your investigation
+      icon: search
+      tone: warn
+      points:
+        - Its logs carry its own wrong clock
+        - A timeline across hosts is in the wrong order
+      verdict: Conclusions mislead
+  note: >-
+    Not covered, and likely more serious: a drift on a controller (tokens, Galera, RabbitMQ), or a larger
+    offset.
+
+checks:
+  - label: Is the clock synchronised?
+    hint: timedatectl
+  - label: Compare every host, in one run
+    hint: "on each host: date -u +%s"
+  - label: With chrony
+    hint: chronyc tracking
+  - label: Why the host lost its time
+    hint: "time service stopped, no server, server unreachable"
+
+caution:
+  - level: state-changing
+    text: >-
+      `timedatectl timesync-status` can start a stopped timesyncd, which steps the clock. Measure the offset
+      first.
+  - level: state-changing
+    text: >-
+      Starting time synchronisation makes the clock jump by the offset. The log timestamps of that host jump
+      with it.
+
+lesson: Before trusting a timeline built from several hosts, compare their clocks.
+
+runbook:
+  path: diagnostics/compute-clock-skew.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - logs/time-sync-chrony-and-clock-skew.md
+
+scope: >-
+  Observed on one lab build: OpenStack 2026.1, Kolla-Ansible, Ubuntu 24.04 with systemd-timesyncd, a 300 s
+  backward drift on one compute for a few minutes. chrony was not run. Not tested: a drift on a controller, a
+  forward drift, a larger or longer offset, TLS certificate validity. Do not assume this memo applies to
+  them. Liveness is recorded on the controllers, with their clocks, which is why Nova and Neutron do not
+  complain.
+
+linkedin:
+  title: "The logs of one host do not line up: check its clock before your theory"
+  caption: |
+    You are rebuilding an incident from the logs of several hosts. On one compute, the lines appear minutes before the events that caused them. The story stops making sense.
+
+    Before building a theory around it, compare the clocks.
+
+    A compute whose clock is a few minutes off keeps working. On a lab, with 300 seconds of drift: nova-compute up, agents alive, new instances booting, no warning anywhere. Nothing fails and nothing alerts. The only thing it breaks is your investigation: its logs carry its own wrong time.
+
+    One detail worth knowing: on a host where systemd-timesyncd is only stopped, asking for its status can start it, which steps the clock and erases the offset you wanted to measure. Compare the clocks first.
+
+    A drift on a controller is another story, and a more serious one.
+  hashtags: [OpenStack, Observability, IncidentResponse, SRE, CloudOperations, OzarLand]

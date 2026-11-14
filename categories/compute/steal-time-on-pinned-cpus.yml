@@ -1,0 +1,76 @@
+id: PG-34
+category: compute
+title: Steal time on pinned CPUs?
+situation: >-
+  An instance with dedicated CPUs shows steal time. A live migration makes it vanish, then it returns on the
+  new host, days or weeks later.
+
+diagram:
+  type: branches
+  head: [On the compute you find, The cause is]
+  split: 52
+  rows:
+    - see: Kernel threads or interrupts on the pinned CPUs
+      means: Host not isolated
+      sub: The dedicated set is shared with the host
+      tone: stop
+    - see: "`virsh emulatorpin` equals the vCPU set"
+      means: Emulator threads
+      sub: "No `hw:emulator_threads_policy` on the flavor"
+      tone: warn
+    - see: Two domains pinned to the same host CPU
+      means: Overlapping pinning
+      sub: "Compare `virsh vcpupin` across domains"
+      tone: warn
+  note: >-
+    With `hw:cpu_policy=dedicated` each guest vCPU should own a host CPU. Steal means something else runs
+    there.
+
+checks:
+  - label: Where the vCPUs are pinned
+    hint: virsh vcpupin <instance-name>
+  - label: Where emulator threads run
+    hint: virsh emulatorpin <instance-name>
+  - label: What else runs on those CPUs
+    hint: "ps -eLo pid,tid,psr,comm ; /proc/interrupts"
+  - label: Nova's dedicated set
+    hint: grep cpu_dedicated_set nova.conf
+
+caution:
+  - level: avoid
+    text: >-
+      Live-migrating again as the response. Each migration pauses the instance, and the cause travels with
+      the configuration.
+  - level: state-changing
+    text: >-
+      Host CPU isolation needs kernel parameters and a reboot. Do one host, measure, then roll out.
+
+lesson: Live migration moves the symptom, not the cause. The cause is on the host.
+
+runbook:
+  path: migration/cpu-steal-on-pinned-instances.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Derived from an operator's incident on a platform with dedicated-CPU workloads. The host isolation and the
+  overlap fixes were not run on a lab, and depend on the OS and hardware: check your vendor's guidance. Live
+  migration of pinned instances only became NUMA-aware in Train; before that a migration could itself create
+  overlapping pinning. Changing a flavor's extra specs does not change running instances.
+
+linkedin:
+  title: "Steal time on pinned CPUs: live migration is not the fix"
+  caption: |
+    An instance was created with dedicated CPUs. It should never see steal time: each vCPU owns a host CPU. And yet top shows 7% steal, and the latency-sensitive workload reports jitter.
+
+    Someone live-migrates it. Steal drops to zero. Problem solved.
+
+    It comes back two weeks later on the new host. So it gets migrated again. And again.
+
+    Live migration moves the symptom, not the cause. The cause is on the host, and it travels with the configuration:
+    → kernel threads or interrupts running on the pinned CPUs: the host is not isolated
+    → emulator threads sharing the vCPU set
+    → two instances pinned to the same host CPU
+
+    All three are visible from the compute, read-only, with virsh vcpupin, virsh emulatorpin and a look at what else runs on those CPUs.
+  hashtags: [OpenStack, Nova, Performance, NFV, CloudOperations, OzarLand]

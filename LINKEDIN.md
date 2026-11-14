@@ -37,6 +37,22 @@ number. Each caption ends with the link to its runbook and to this repository.
 | PG-26 | 503 from the API: HAProxy is the messenger, not the cause | [`pg-26-api-returns-503.png`](dist/pg-26-api-returns-503.png) | [page](categories/control-plane/api-returns-503.md#linkedin-kit) |
 | PG-27 | 401 with a token that should be valid: the fresh token is lying to you | [`pg-27-401-with-a-valid-token.png`](dist/pg-27-401-with-a-valid-token.png) | [page](categories/control-plane/401-with-a-valid-token.md#linkedin-kit) |
 | PG-28 | "Too many connections": three limits, three messages | [`pg-28-database-connections-exhausted.png`](dist/pg-28-database-connections-exhausted.png) | [page](categories/control-plane/database-connections-exhausted.md#linkedin-kit) |
+| PG-29 | A snapshot that never finishes: find where it is before you clear it | [`pg-29-snapshot-never-finishes.png`](dist/pg-29-snapshot-never-finishes.png) | [page](categories/vm-lifecycle/snapshot-never-finishes.md#linkedin-kit) |
+| PG-30 | The guest is broken, Nova says ACTIVE: rescue mode | [`pg-30-guest-broken-nova-says-active.png`](dist/pg-30-guest-broken-nova-says-active.png) | [page](categories/vm-lifecycle/guest-broken-nova-says-active.md#linkedin-kit) |
+| PG-31 | The instance console does not open: four hops, one log | [`pg-31-console-does-not-open.png`](dist/pg-31-console-does-not-open.png) | [page](categories/vm-lifecycle/console-does-not-open.md#linkedin-kit) |
+| PG-32 | Boot from volume fails: Nova reports it, Cinder explains it | [`pg-32-boot-from-volume-fails.png`](dist/pg-32-boot-from-volume-fails.png) | [page](categories/vm-lifecycle/boot-from-volume-fails.md#linkedin-kit) |
+| PG-33 | Flavor's disk is too small: the file size is not the disk size | [`pg-33-image-too-big-for-the-flavor.png`](dist/pg-33-image-too-big-for-the-flavor.png) | [page](categories/vm-lifecycle/image-too-big-for-the-flavor.md#linkedin-kit) |
+| PG-34 | Steal time on pinned CPUs: live migration is not the fix | [`pg-34-steal-time-on-pinned-cpus.png`](dist/pg-34-steal-time-on-pinned-cpus.png) | [page](categories/compute/steal-time-on-pinned-cpus.md#linkedin-kit) |
+| PG-35 | After a compute reboot, the instances stay SHUTOFF. That is the default. | [`pg-35-after-a-compute-reboot.png`](dist/pg-35-after-a-compute-reboot.png) | [page](categories/compute/after-a-compute-reboot.md#linkedin-kit) |
+| PG-36 | A compute was renamed. Now nova-compute refuses to start. | [`pg-36-compute-renamed-or-re-added.png`](dist/pg-36-compute-renamed-or-re-added.png) | [page](categories/compute/compute-renamed-or-re-added.md#linkedin-kit) |
+| PG-37 | ACTIVE, with an address, and no SSH key: the instance booted without metadata | [`pg-37-booted-without-its-ssh-key.png`](dist/pg-37-booted-without-its-ssh-key.png) | [page](categories/networking/booted-without-its-ssh-key.md#linkedin-kit) |
+| PG-38 | "Binding failed for port": the Neutron server log already says why | [`pg-38-binding-failed-for-port.png`](dist/pg-38-binding-failed-for-port.png) | [page](categories/networking/binding-failed-for-port.md#linkedin-kit) |
+| PG-39 | The volume was extended. The guest still sees the old size. | [`pg-39-extended-but-same-size-inside.png`](dist/pg-39-extended-but-same-size-inside.png) | [page](categories/storage/extended-but-same-size-inside.md#linkedin-kit) |
+| PG-40 | Volume stuck in creating: one field tells the scheduler from the backend | [`pg-40-volume-stuck-in-creating.png`](dist/pg-40-volume-stuck-in-creating.png) | [page](categories/storage/volume-stuck-in-creating.md#linkedin-kit) |
+| PG-41 | A volume that will not delete may still be in use | [`pg-41-volume-will-not-delete.png`](dist/pg-41-volume-will-not-delete.png) | [page](categories/storage/volume-will-not-delete.md#linkedin-kit) |
+| PG-42 | nova-conductor down: every compute looks dead, and none of them is | [`pg-42-conductor-or-scheduler-down.png`](dist/pg-42-conductor-or-scheduler-down.png) | [page](categories/control-plane/conductor-or-scheduler-down.md#linkedin-kit) |
+| PG-43 | VM creation fails everywhere: the cause is rarely in Nova | [`pg-43-provisioning-fails-everywhere.png`](dist/pg-43-provisioning-fails-everywhere.png) | [page](categories/control-plane/provisioning-fails-everywhere.md#linkedin-kit) |
+| PG-44 | The logs of one host do not line up: check its clock before your theory | [`pg-44-logs-do-not-line-up.png`](dist/pg-44-logs-do-not-line-up.png) | [page](categories/production-operations/logs-do-not-line-up.md#linkedin-kit) |
 
 ## PG-01 · VM stuck in BUILD? Look at the network before you look at Nova.
 
@@ -700,4 +716,373 @@ Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/da
 More memos: https://github.com/OzarLand/production-guide
 
 #OpenStack #MariaDB #ProxySQL #ControlPlane #CloudOperations #OzarLand
+```
+
+## PG-29 · A snapshot that never finishes: find where it is before you clear it
+
+Image: [`dist/pg-29-snapshot-never-finishes.png`](dist/pg-29-snapshot-never-finishes.png)
+
+```text
+An instance snapshot has been running for an hour. The image is still "saving". Every other action on the instance is refused. Is it stuck?
+
+Often not. On the standard path, the whole disk is first written on the compute, then uploaded to Glance, and the upload has no progress indicator at all: the image stays "saving", with no size, until the moment it turns active.
+
+The task state tells you where it is:
+→ image_snapshot_pending: the compute has not received it
+→ image_pending_upload: being written on the compute
+→ image_uploading with the image "saving": on its way to Glance
+→ task state cleared and image gone: it failed, and the compute log says why
+
+The dangerous shortcut is deleting a "saving" image that turns out to be someone else's upload.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/snapshot-stuck-in-image-uploading.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Glance #CloudOperations #SRE #OzarLand
+```
+
+## PG-30 · The guest is broken, Nova says ACTIVE: rescue mode
+
+Image: [`dist/pg-30-guest-broken-nova-says-active.png`](dist/pg-30-guest-broken-nova-says-active.png)
+
+```text
+Nova shows the instance ACTIVE. The guest is stuck in an emergency shell after a wrong fstab line. Or it boots, and nobody can log in any more.
+
+A reboot will not help: the fault is inside the guest's disk. And from Nova's point of view, nothing is wrong.
+
+Rescue mode is the way in, in three moves:
+1. Rescue: the guest is stopped and boots from a rescue disk
+2. Repair: its own disk is attached as a data disk. Mount it, fix the file.
+3. Unrescue: it boots from its own disk again
+
+Two things to check before starting. Whether rescue_timeout is set on the compute: if it is, Nova unrescues without warning, possibly with the disk still mounted. And whether the instance boots from a volume: that needs a rescue image with the hw_rescue properties.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/rescue-mode-repair-an-unbootable-guest.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Troubleshooting #CloudOperations #SRE #OzarLand
+```
+
+## PG-31 · The instance console does not open: four hops, one log
+
+Image: [`dist/pg-31-console-does-not-open.png`](dist/pg-31-console-does-not-open.png)
+
+```text
+"The console doesn't work." It is one of the vaguest tickets an OpenStack team gets, and usually nothing is wrong with the instance.
+
+A console connection is a chain of four hops:
+→ the browser opens the public URL of the console proxy
+→ the proxy checks the token, and its lifetime
+→ the proxy connects to the compute, on the guest's VNC port
+→ the guest's own VNC device, in libvirt
+
+Each one fails differently: a blank page, an Origin error, "the token is invalid or has expired", a connection refused. The console proxy log tells you which hop refused.
+
+The most common cause is also the most boring one: a URL opened too late, or reused.
+
+Source runbook status: draft.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/console-not-available-or-disconnects.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Troubleshooting #CloudOperations #SRE #OzarLand
+```
+
+## PG-32 · Boot from volume fails: Nova reports it, Cinder explains it
+
+Image: [`dist/pg-32-boot-from-volume-fails.png`](dist/pg-32-boot-from-volume-fails.png)
+
+```text
+Instances with a local disk build fine. The ones that boot from a volume do not.
+
+What happens tells you where to look:
+→ refused at once, no instance: the request itself. Volume smaller than the image's min_disk, a volume that is not bootable, no boot index 0.
+→ ERROR within seconds, the volume in "error": Cinder could not create it.
+→ ERROR after about three minutes, the volume still "creating": it was not ready when Nova stopped waiting.
+→ ACTIVE, but nothing boots: the source. An image declared raw that is really qcow2 is written to the volume as it is.
+
+For a volume in error, Cinder usually says why in one line: openstack volume message list.
+
+What not to do: retry in a loop. Each retry from an image creates another volume, which counts in the quota.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/instance-fails-to-boot-from-volume.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Cinder #Storage #CloudOperations #OzarLand
+```
+
+## PG-33 · Flavor's disk is too small: the file size is not the disk size
+
+Image: [`dist/pg-33-image-too-big-for-the-flavor.png`](dist/pg-33-image-too-big-for-the-flavor.png)
+
+```text
+The same image, the same flavor. Sometimes the boot is refused at once. Sometimes the instance is scheduled, the image is downloaded, and the build is aborted.
+
+Nova checks the image against the flavor twice, with two different numbers:
+→ at the API, before scheduling: the size of the image FILE, and its min_disk
+→ on the compute, after the download: the VIRTUAL size, the disk the image actually holds
+
+A compressed qcow2 has a small file and a large virtual disk. With no min_disk set, it passes the first check and fails the second, after wasting a scheduling round and a download.
+
+The clean fix is on the image: set min_disk to its virtual size, and the API refuses a too small flavor immediately, with a clear message.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/image-larger-than-flavor-disk.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Glance #CloudOperations #SRE #OzarLand
+```
+
+## PG-34 · Steal time on pinned CPUs: live migration is not the fix
+
+Image: [`dist/pg-34-steal-time-on-pinned-cpus.png`](dist/pg-34-steal-time-on-pinned-cpus.png)
+
+```text
+An instance was created with dedicated CPUs. It should never see steal time: each vCPU owns a host CPU. And yet top shows 7% steal, and the latency-sensitive workload reports jitter.
+
+Someone live-migrates it. Steal drops to zero. Problem solved.
+
+It comes back two weeks later on the new host. So it gets migrated again. And again.
+
+Live migration moves the symptom, not the cause. The cause is on the host, and it travels with the configuration:
+→ kernel threads or interrupts running on the pinned CPUs: the host is not isolated
+→ emulator threads sharing the vCPU set
+→ two instances pinned to the same host CPU
+
+All three are visible from the compute, read-only, with virsh vcpupin, virsh emulatorpin and a look at what else runs on those CPUs.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/cpu-steal-on-pinned-instances.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Performance #NFV #CloudOperations #OzarLand
+```
+
+## PG-35 · After a compute reboot, the instances stay SHUTOFF. That is the default.
+
+Image: [`dist/pg-35-after-a-compute-reboot.png`](dist/pg-35-after-a-compute-reboot.png)
+
+```text
+A compute was rebooted for a kernel update. It is back, it answers SSH, nova-compute is up. And every instance on it is SHUTOFF.
+
+Nothing is broken. resume_guests_state_on_host_boot defaults to False: Nova does not start the guests that were running before a host reboot. Someone has to.
+
+The other surprises after a reboot come from the same place: what was never written down.
+→ a service that did not come back, and if it is ovs-vswitchd, every instance is cut off
+→ an external interface or bond that is DOWN
+→ an MTU that was set by hand, months ago, and is back to the default
+
+One caution before starting everything again: an instance that was stopped on purpose before the reboot looks exactly like the others.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/after-a-compute-reboot-instances-shutoff-or-without-network.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Maintenance #CloudOperations #SRE #OzarLand
+```
+
+## PG-36 · A compute was renamed. Now nova-compute refuses to start.
+
+Image: [`dist/pg-36-compute-renamed-or-re-added.png`](dist/pg-36-compute-renamed-or-re-added.png)
+
+```text
+A compute was reinstalled, or its host name went from a short name to an FQDN. Since then, nova-compute refuses to start. Or it starts, shows "up", and no instance ever lands on it.
+
+Nova ties a compute to three records that must agree:
+→ the service, known by its host name
+→ the compute node, known by a UUID the compute keeps on disk (compute_id)
+→ the Placement resource provider, same UUID, named after the hypervisor
+
+Change the name, lose the file, or leave an old provider behind, and one of them disagrees.
+
+Two things to remember. Read the nova-compute log, not the container status: on a lab the container stayed "healthy" while the service was down. And do not fix it by deleting records while instances still run on that host.
+
+Source runbook status: draft.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/compute-renamed-or-re-registered-resource-provider-conflict.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Placement #CloudOperations #SRE #OzarLand
+```
+
+## PG-37 · ACTIVE, with an address, and no SSH key: the instance booted without metadata
+
+Image: [`dist/pg-37-booted-without-its-ssh-key.png`](dist/pg-37-booted-without-its-ssh-key.png)
+
+```text
+A new instance is ACTIVE. It has its address. And nobody can log in: the SSH key was never installed, the user data never ran, the hostname is a default one.
+
+At first boot, the guest asks 169.254.169.254 for its metadata. With ML2/OVS that request goes through a haproxy in the network's DHCP namespace, then the Neutron metadata agent, then Nova's metadata API. With every metadata agent down, it goes nowhere. The image waits, then boots without it.
+
+Nova reports nothing. Instances created earlier are fine.
+
+The part that hurts: it stays broken after the agents are back. The first boot, the one that applies the key and the user data, is over. Every instance created during the outage has to be dealt with, one by one.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/new-instance-boots-without-metadata.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Neutron #Nova #CloudInit #CloudOperations #OzarLand
+```
+
+## PG-38 · "Binding failed for port": the Neutron server log already says why
+
+Image: [`dist/pg-38-binding-failed-for-port.png`](dist/pg-38-binding-failed-for-port.png)
+
+```text
+A build ends in ERROR, or a live migration is refused before it starts: "Binding failed for port, please check neutron logs for more information."
+
+For once the message is right. The answer is in the Neutron server log, for that port ID.
+
+When Nova allocates or moves a port, it gives Neutron a host name. Neutron then asks each mechanism driver to bind the port on that host. Three usual refusals:
+→ the agent on that host is dead
+→ no agent or chassis is registered under that exact name: a short name on one side, an FQDN on the other
+→ the host has no bridge mapping for the network's physical network
+
+One rule when names differ: change the Neutron side, never Nova's host on a compute that has instances.
+
+Source runbook status: draft.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/port-binding-failed.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Neutron #Nova #Networking #CloudOperations #OzarLand
+```
+
+## PG-39 · The volume was extended. The guest still sees the old size.
+
+Image: [`dist/pg-39-extended-but-same-size-inside.png`](dist/pg-39-extended-but-same-size-inside.png)
+
+```text
+"I extended the volume and nothing changed." Extending an attached volume is not one operation. It is four stages, and it can stop after any of them:
+
+1. The Cinder API accepts it. For an in-use volume that needs volume API 3.42.
+2. The backend grows the volume, or the volume goes to error_extending.
+3. Nova receives a volume-extended event and refreshes the device on the compute.
+4. Inside the guest, the partition and the file system are grown. That one is the owner's job.
+
+So before extending again, find the last stage that actually happened: Cinder's size and status, Cinder's messages for the volume, the instance's events, and lsblk inside the guest.
+
+And remember that a volume cannot be shrunk afterwards.
+
+Source runbook status: draft.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/extend-in-use-volume-guest-sees-old-size.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Cinder #Nova #Storage #CloudOperations #OzarLand
+```
+
+## PG-40 · Volume stuck in creating: one field tells the scheduler from the backend
+
+Image: [`dist/pg-40-volume-stuck-in-creating.png`](dist/pg-40-volume-stuck-in-creating.png)
+
+```text
+A volume is created. The request is accepted. And it never becomes available: "error" within seconds, or "creating" for hours.
+
+One field splits the problem in two, the host Cinder chose for the volume:
+→ error, no host: no backend passed the scheduler. Capacity, a volume type that matches no backend, the zone, a backend that is down.
+→ error, a host is set: the backend was chosen and its driver failed.
+→ creating, and that host's cinder-volume is down: the service stopped with the request in hand.
+→ creating, no host, every service up: the request was lost. Look at RabbitMQ.
+
+And Cinder often explains itself in one line: openstack volume message list.
+
+The shortcut to avoid is forcing the status while a backend is in fact still working on the volume.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/volume-stuck-in-creating-or-error-after-create.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Cinder #Storage #CloudOperations #SRE #OzarLand
+```
+
+## PG-41 · A volume that will not delete may still be in use
+
+Image: [`dist/pg-41-volume-will-not-delete.png`](dist/pg-41-volume-will-not-delete.png)
+
+```text
+You delete a volume. It does not go away. What it does instead tells you the cause.
+
+→ It stays "deleting" and the log is silent: the cinder-volume service is down, or the request was lost. Bring the service back, then wait. An interrupted delete is run again at start-up.
+→ It stays "deleting" and the log shows work in progress: a slow backend. Wait.
+→ It turns "error_deleting" with a traceback: the backend failed. Fix what it names.
+→ It comes back "available": the backend found the volume still open somewhere.
+
+That last one deserves respect. A volume that refuses to be deleted because something still uses it is the system working correctly. Find the compute and the instance that still has it open before forcing anything.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/volume-stuck-in-deleting-or-error-deleting.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Cinder #Storage #DataIntegrity #CloudOperations #OzarLand
+```
+
+## PG-42 · nova-conductor down: every compute looks dead, and none of them is
+
+Image: [`dist/pg-42-conductor-or-scheduler-down.png`](dist/pg-42-conductor-or-scheduler-down.png)
+
+```text
+nova-conductor and nova-scheduler live on the controllers. When every copy of one of them is down, Nova does not fail at once, and not everywhere.
+
+With the conductor down:
+→ new builds stay in BUILD, and finish by themselves when it is back
+→ within a minute every compute is reported "down", while its instances keep running
+→ start, stop and reboot time out
+
+With the scheduler down:
+→ new builds fail after about a minute, and land in ERROR in cell0, with no host
+→ start, stop and reboot still work
+
+In both cases API reads work, and running instances notice nothing.
+
+The trap is the wall of "down" computes. nova-compute has no database access of its own: its heartbeat goes through the conductor. Nothing is wrong on the hosts. And deleting an instance at that moment is a local delete.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/nova-conductor-or-scheduler-down-what-still-works.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #ControlPlane #IncidentResponse #CloudOperations #OzarLand
+```
+
+## PG-43 · VM creation fails everywhere: the cause is rarely in Nova
+
+Image: [`dist/pg-43-provisioning-fails-everywhere.png`](dist/pg-43-provisioning-fails-everywhere.png)
+
+```text
+Nobody can create an instance. Any host, any project, any network. Existing instances run fine.
+
+The reflex is to open the Nova logs. But when every provisioning request fails at once, the cause is rarely in Nova. It is in something every service shares.
+
+Check those first, in dependency order, read-only:
+1. Keystone and memcached: tokens, Fernet keys, certificates
+2. The load balancer: the VIP on exactly one node, backends up
+3. Galera: Primary, synced
+4. RabbitMQ: partitions, alarms
+5. Only now, the OpenStack services, by request id
+
+And ask the question that resolves more incidents than any metric: what changed in the last hours?
+
+The workloads are not at risk from the condition. They are at risk from an uncontrolled attempt to fix it.
+
+Source runbook status: draft.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/diagnostics/vm-creation-fails-platform-wide-check-shared-dependencies.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #IncidentResponse #ControlPlane #SRE #CloudOperations #OzarLand
+```
+
+## PG-44 · The logs of one host do not line up: check its clock before your theory
+
+Image: [`dist/pg-44-logs-do-not-line-up.png`](dist/pg-44-logs-do-not-line-up.png)
+
+```text
+You are rebuilding an incident from the logs of several hosts. On one compute, the lines appear minutes before the events that caused them. The story stops making sense.
+
+Before building a theory around it, compare the clocks.
+
+A compute whose clock is a few minutes off keeps working. On a lab, with 300 seconds of drift: nova-compute up, agents alive, new instances booting, no warning anywhere. Nothing fails and nothing alerts. The only thing it breaks is your investigation: its logs carry its own wrong time.
+
+One detail worth knowing: on a host where systemd-timesyncd is only stopped, asking for its status can start it, which steps the clock and erases the offset you wanted to measure. Compare the clocks first.
+
+A drift on a controller is another story, and a more serious one.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/diagnostics/compute-clock-skew.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Observability #IncidentResponse #SRE #CloudOperations #OzarLand
 ```

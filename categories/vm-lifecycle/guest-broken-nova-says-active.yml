@@ -1,0 +1,74 @@
+id: PG-30
+category: vm-lifecycle
+title: Guest broken, Nova says ACTIVE?
+situation: >-
+  The guest stops at boot or cannot be reached: a wrong `fstab`, a kernel that does not boot, a lost key. A
+  reboot does not help. The fault is inside its disk.
+
+diagram:
+  type: chain
+  caption: Rescue mode, in three moves
+  nodes:
+    - step: "1"
+      label: Rescue
+      sub: The guest is stopped and boots from a rescue disk
+      tone: warn
+    - step: "2"
+      label: Repair
+      sub: Its own disk is attached as data. Mount it, fix it
+      tone: warn
+    - step: "3"
+      label: Unrescue
+      sub: It boots from its own disk again
+      tone: ok
+  note: >-
+    The data is intact on the instance's disk. The rescue itself does not change it.
+
+checks:
+  - label: State, image, boot from volume?
+    hint: openstack server show <id> -c status -c image -c volumes_attached
+  - label: What the guest prints at boot
+    hint: openstack console log show --lines 100 <id>
+  - label: Is rescue_timeout set?
+    hint: "default 0 (off). If set, Nova unrescues without warning"
+  - label: "In rescue: is / the rescue disk?"
+    hint: "mount | grep ' / ' ; lsblk"
+
+caution:
+  - level: state-changing
+    text: >-
+      Rescue stops the guest: its users lose it until the unrescue. Keep a copy of every file you change on
+      its disk.
+  - level: know
+    text: >-
+      A volume-backed instance needs a stable device rescue: an image with `hw_rescue_*` properties and
+      compute API 2.87.
+
+lesson: The fault is in the guest, the data is intact. Rescue mode gets you to the disk.
+
+runbook:
+  path: lifecycle/rescue-mode-repair-an-unbootable-guest.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from the Nova 2026.1 rescue guide and source, and reproduced on an all-in-one lab with CirrOS
+  guests: legacy rescue of a local-disk instance, stable device rescue of a volume-backed and a local-disk
+  instance. The repair itself depends on the guest's operating system; other guests were not tested, and
+  Windows guests are not covered. If / in the rescue system is the original disk, the rescue booted the broken
+  system: use another rescue image.
+
+linkedin:
+  title: "The guest is broken, Nova says ACTIVE: rescue mode"
+  caption: |
+    Nova shows the instance ACTIVE. The guest is stuck in an emergency shell after a wrong fstab line. Or it boots, and nobody can log in any more.
+
+    A reboot will not help: the fault is inside the guest's disk. And from Nova's point of view, nothing is wrong.
+
+    Rescue mode is the way in, in three moves:
+    1. Rescue: the guest is stopped and boots from a rescue disk
+    2. Repair: its own disk is attached as a data disk. Mount it, fix the file.
+    3. Unrescue: it boots from its own disk again
+
+    Two things to check before starting. Whether rescue_timeout is set on the compute: if it is, Nova unrescues without warning, possibly with the disk still mounted. And whether the instance boots from a volume: that needs a rescue image with the hw_rescue properties.
+  hashtags: [OpenStack, Nova, Troubleshooting, CloudOperations, SRE, OzarLand]

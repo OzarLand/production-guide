@@ -11,3 +11,8 @@
 - **PG-05** [ACTIVE in Nova, frozen for users?](active-but-frozen.md): Nova does not watch the disk. Monitor the instance store and the power state.
 - **PG-21** [SHUTOFF by itself?](shutoff-by-itself.md): The scheduler trusts the inventory. Make it match what the host really uses.
 - **PG-22** [Resize not finished?](resize-not-finished.md): VERIFY_RESIZE is not stuck. It waits for a decision only the owner can make.
+- **PG-29** [Snapshot never finishes?](snapshot-never-finishes.md): A slow snapshot is often just a large disk. Check that it progresses before clearing anything.
+- **PG-30** [Guest broken, Nova says ACTIVE?](guest-broken-nova-says-active.md): The fault is in the guest, the data is intact. Rescue mode gets you to the disk.
+- **PG-31** [Console does not open?](console-does-not-open.md): A console is a chain of four hops. The proxy log says which one refused.
+- **PG-32** [Boot from volume fails?](boot-from-volume-fails.md): The fault names the volume. Read its status and Cinder's message before you retry.
+- **PG-33** [Image too big for the flavor?](image-too-big-for-the-flavor.md): The file size is not the disk size. Compare the flavor with the image's virtual size.

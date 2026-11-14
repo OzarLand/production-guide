@@ -1,0 +1,76 @@
+id: PG-41
+category: storage
+title: Volume will not delete?
+situation: >-
+  After the delete the volume stays `deleting`, turns `error_deleting`, or comes back `available`. Each
+  outcome points to a different cause.
+
+diagram:
+  type: branches
+  head: [After the delete, The cause is]
+  split: 50
+  rows:
+    - see: "`deleting`, nothing in the log"
+      means: Service down, or request lost
+      sub: Bring cinder-volume back, then wait
+      tone: warn
+    - see: "`deleting`, work in progress in the log"
+      means: A slow backend
+      sub: Wait. Do not reset, do not delete again
+      tone: mute
+    - see: "`error_deleting`, with a traceback"
+      means: The backend failed
+      sub: Fix what the traceback names
+      tone: stop
+    - see: "Back to `available`"
+      means: Still in use
+      sub: A host still has the volume open
+      tone: stop
+
+checks:
+  - label: Status, attachments, owner
+    hint: openstack volume show <volume> -c status -c attachments
+  - label: Snapshots of the volume
+    hint: openstack volume snapshot list --all-projects --volume <volume>
+  - label: Is its cinder-volume up?
+    hint: openstack volume service list --service cinder-volume
+  - label: What that service logged
+    hint: grep <volume-id> cinder-volume.log
+
+caution:
+  - level: avoid
+    text: >-
+      Forcing the delete of a volume that came back `available`. Something still has it open: that is
+      exactly when it must not be deleted.
+  - level: state-changing
+    text: >-
+      Resetting the state while a delete is still running races it. An interrupted delete runs again when
+      the service starts.
+
+lesson: A volume that refuses to go may still be in use. Find the user before forcing anything.
+
+runbook:
+  path: volumes/volume-stuck-in-deleting-or-error-deleting.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - volumes/stale-volume-attachment-after-instance-deleted-or-evacuated.md
+
+scope: >-
+  Written from the Cinder 2026.1 source. Reproduced on an all-in-one lab with Cinder LVM for a service down,
+  a backend failure and a delete refused by the API; the Ceph RBD and encrypted-volume parts were not. On
+  LVM a volume still open gives error_deleting rather than available. A delete can also be refused at once:
+  attached, with snapshots, migrating or in a group. Volumes in groups and transfers are not covered.
+
+linkedin:
+  title: "A volume that will not delete may still be in use"
+  caption: |
+    You delete a volume. It does not go away. What it does instead tells you the cause.
+
+    → It stays "deleting" and the log is silent: the cinder-volume service is down, or the request was lost. Bring the service back, then wait. An interrupted delete is run again at start-up.
+    → It stays "deleting" and the log shows work in progress: a slow backend. Wait.
+    → It turns "error_deleting" with a traceback: the backend failed. Fix what it names.
+    → It comes back "available": the backend found the volume still open somewhere.
+
+    That last one deserves respect. A volume that refuses to be deleted because something still uses it is the system working correctly. Find the compute and the instance that still has it open before forcing anything.
+  hashtags: [OpenStack, Cinder, Storage, DataIntegrity, CloudOperations, OzarLand]

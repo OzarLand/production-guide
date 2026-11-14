@@ -6,3 +6,6 @@
 
 - **PG-13** [Volume stuck attaching or detaching?](volume-stuck-attaching-or-detaching.md): The hypervisor tells the truth about the instance. Trust it over both databases.
 - **PG-14** [In-use by a VM that is gone?](volume-in-use-by-a-missing-instance.md): A record is stale only when the hypervisor agrees. Check the host before the database.
+- **PG-39** [Extended, same size inside?](extended-but-same-size-inside.md): Find the last stage that happened before you repeat the first.
+- **PG-40** [Volume stuck in creating?](volume-stuck-in-creating.md): No host means the scheduler. A host set means the backend. Cinder's message says the rest.
+- **PG-41** [Volume will not delete?](volume-will-not-delete.md): A volume that refuses to go may still be in use. Find the user before forcing anything.

@@ -77,7 +77,7 @@ function validateMemo(m, icons = iconNames()) {
   text(m.title, 'title', LIMITS.title);
   text(m.situation, 'situation', LIMITS.situation);
   text(m.lesson, 'lesson', LIMITS.lesson);
-  text(m.scope, 'scope', 520);
+  text(m.scope, 'scope', 600);
 
   // Diagram
   const d = m.diagram || {};

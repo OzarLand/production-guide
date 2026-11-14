@@ -1,0 +1,89 @@
+id: PG-43
+category: control-plane
+title: Provisioning fails everywhere?
+situation: >-
+  No instance can be created, on any host, project or network, while existing instances run fine. The cause
+  is rarely in Nova.
+
+diagram:
+  type: chain
+  caption: Check what everything shares, in this order
+  nodes:
+    - step: "1"
+      label: Keystone
+      sub: Tokens, keys, certificates, memcached
+      tone: ink
+    - step: "2"
+      label: Load balancer
+      sub: VIP on one node, backends up
+      tone: ink
+    - step: "3"
+      label: Galera
+      sub: Primary, synced
+      tone: ink
+    - step: "4"
+      label: RabbitMQ
+      sub: Partitions, alarms
+      tone: ink
+    - step: "5"
+      label: Services
+      sub: Only now, their logs
+      tone: ink
+  note: Every compute `down` at once means the bus or the database, not the hosts.
+
+checks:
+  - label: Liveness, as the services report it
+    hint: openstack compute service list ; openstack network agent list
+  - label: Instances piling up in a transition
+    hint: openstack server list --all-projects --long
+  - label: Do the APIs answer, how slowly?
+    hint: time openstack token issue
+  - label: What changed in the last hours?
+    hint: "deployments, certificates, maintenance, network changes"
+
+caution:
+  - level: avoid
+    text: >-
+      Letting an unstable control plane keep accepting requests. It creates half-built instances and records
+      that disagree.
+  - level: know
+    text: >-
+      Workloads are not at risk from the condition itself. They are at risk from an uncontrolled attempt to
+      fix it.
+
+lesson: When everything fails at once, look at what everything shares.
+
+runbook:
+  path: diagnostics/vm-creation-fails-platform-wide-check-shared-dependencies.md
+  status: draft
+  release: "2026.1"
+  also:
+    - recovery/reopening-provisioning-after-control-plane-incident.md
+    - diagnostics/expired-certificates-and-fernet-keys-break-every-api-call.md
+
+scope: >-
+  The runbook is a draft: a read-only triage derived from an operator's incident, later traced to a RabbitMQ
+  partition. Its checks were run on a Kolla-Ansible 2026.1 lab with three controllers, healthy and during a
+  RabbitMQ memory alarm. What a RabbitMQ partition looks like depends on its metadata store (Mnesia or
+  Khepri). Each dependency has its own memo and runbook for the repair.
+
+linkedin:
+  title: "VM creation fails everywhere: the cause is rarely in Nova"
+  caption: |
+    Nobody can create an instance. Any host, any project, any network. Existing instances run fine.
+
+    The reflex is to open the Nova logs. But when every provisioning request fails at once, the cause is rarely in Nova. It is in something every service shares.
+
+    Check those first, in dependency order, read-only:
+    1. Keystone and memcached: tokens, Fernet keys, certificates
+    2. The load balancer: the VIP on exactly one node, backends up
+    3. Galera: Primary, synced
+    4. RabbitMQ: partitions, alarms
+    5. Only now, the OpenStack services, by request id
+
+    And ask the question that resolves more incidents than any metric: what changed in the last hours?
+
+    The workloads are not at risk from the condition. They are at risk from an uncontrolled attempt to fix it.
+
+    Source runbook status: draft.
+  hashtags: [OpenStack, IncidentResponse, ControlPlane, SRE, CloudOperations, OzarLand]
