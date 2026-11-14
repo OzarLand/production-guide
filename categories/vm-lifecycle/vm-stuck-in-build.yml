@@ -68,16 +68,16 @@ scope: >-
 linkedin:
   title: "VM stuck in BUILD? Look at the network before you look at Nova."
   caption: |
-    An instance sits in BUILD / spawning for five minutes, then goes to ERROR.
+    An instance sits in BUILD / spawning for about five minutes, then goes to ERROR.
 
-    The reflex is to blame Nova. But scheduling already succeeded: a host was selected and Placement holds the allocation. nova-compute is waiting for one event from Neutron, network-vif-plugged, and it never arrives.
+    The reflex is to blame Nova. But scheduling already succeeded: a host was selected and Placement holds the allocation. nova-compute is waiting for one event from Neutron, network-vif-plugged, and it never arrives. After vif_plugging_timeout, 300 seconds by default, Nova aborts the build.
 
     Three read-only checks tell you where it stopped:
-    → the fault and the selected host
-    → the port: binding_failed, or bound but DOWN?
-    → the networking agent on that host
+    → the fault, and the host while the instance is still in BUILD (once in ERROR, the host field is empty)
+    → the port: bound, but still DOWN?
+    → the networking agent on that host: alive?
 
-    Deleting and recreating will not help while the agent on the host is not wiring ports.
+    Recreating the instance will not help while the agent on that host is not wiring ports. Nova does not retry the build elsewhere, and every failure leaves an ERROR instance that holds quota.
 
     The lesson: a networking problem wearing a compute symptom.
   hashtags: [OpenStack, Nova, Neutron, CloudOperations, SRE, OzarLand]
