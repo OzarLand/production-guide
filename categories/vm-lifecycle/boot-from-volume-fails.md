@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Instance fails to boot from volume. ERROR at build, or ACTIVE with no bootable disk](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/instance-fails-to-boot-from-volume.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 - [Volume stuck in creating, or in error right after create](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/volume-stuck-in-creating-or-error-after-create.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Written from the Nova and Cinder 2026.1 sources; its causes were partly reproduced on an all-in-one lab. The exact form of the fault messages varies with the client and the compute API microversion. A compute that cannot connect to the storage is a further cause, covered by the runbook. Ironic, encrypted volumes, and rescue and rebuild of volume-backed instances are not covered.
+**Where this holds.** Written from the Nova and Cinder 2026.1 sources; its five causes were partly reproduced on an all-in-one lab with Cinder LVM over iSCSI. The three minutes are Nova's default wait (block_device_allocate_retries). Cinder 2026.1 refuses a qcow2 image declared raw: the volume goes to error, it is not written as it is. Fixing an image property and rebooting does not help: the instance keeps the properties copied at build time. Fault wording varies with the client and microversion. Ironic and encrypted volumes are not covered.
 
 ## LinkedIn kit
 
@@ -43,9 +43,9 @@ Instances with a local disk build fine. The ones that boot from a volume do not.
 
 What happens tells you where to look:
 → refused at once, no instance: the request itself. Volume smaller than the image's min_disk, a volume that is not bootable, no boot index 0.
-→ ERROR within seconds, the volume in "error": Cinder could not create it.
-→ ERROR after about three minutes, the volume still "creating": it was not ready when Nova stopped waiting.
-→ ACTIVE, but nothing boots: the source. An image declared raw that is really qcow2 is written to the volume as it is.
+→ ERROR, the volume in "error" or still "creating": Cinder. It failed, or the volume was not ready when Nova stopped waiting, after about three minutes by default.
+→ ERROR with "Exceeded maximum number of retries", the volume "available": the compute. It could not connect to the volume, and neither could the others.
+→ ACTIVE, but nothing boots: what the volume holds. A blank volume marked bootable, or an image that needs a firmware or disk bus the instance did not get.
 
 For a volume in error, Cinder usually says why in one line: openstack volume message list.
 

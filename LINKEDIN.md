@@ -797,9 +797,9 @@ Instances with a local disk build fine. The ones that boot from a volume do not.
 
 What happens tells you where to look:
 → refused at once, no instance: the request itself. Volume smaller than the image's min_disk, a volume that is not bootable, no boot index 0.
-→ ERROR within seconds, the volume in "error": Cinder could not create it.
-→ ERROR after about three minutes, the volume still "creating": it was not ready when Nova stopped waiting.
-→ ACTIVE, but nothing boots: the source. An image declared raw that is really qcow2 is written to the volume as it is.
+→ ERROR, the volume in "error" or still "creating": Cinder. It failed, or the volume was not ready when Nova stopped waiting, after about three minutes by default.
+→ ERROR with "Exceeded maximum number of retries", the volume "available": the compute. It could not connect to the volume, and neither could the others.
+→ ACTIVE, but nothing boots: what the volume holds. A blank volume marked bootable, or an image that needs a firmware or disk bus the instance did not get.
 
 For a volume in error, Cinder usually says why in one line: openstack volume message list.
 
