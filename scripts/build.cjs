@@ -22,6 +22,10 @@ const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
 const opt = (n) => (args.includes(n) ? args[args.indexOf(n) + 1] : undefined);
 
+// Font hinting depends on the machine's FreeType and fontconfig settings and changes glyph advances by a fraction
+// of a pixel, enough to wrap a line differently on another machine. Turning it off makes the layout the same
+// everywhere, which is what lets CI re-render the collection and agree with a local build.
+const LAUNCH = { args: ['--font-render-hinting=none'] };
 const DIST = path.join(ROOT, 'dist');
 const HTML = path.join(ROOT, '.cache', 'html');
 const GUIDE = 'https://github.com/OzarLand/production-guide';
@@ -250,7 +254,7 @@ async function render(memos, scale) {
   const { chromium } = require('playwright');
   fs.mkdirSync(DIST, { recursive: true });
   fs.mkdirSync(HTML, { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(LAUNCH);
   const page = await browser.newPage({ viewport: { width: 1080, height: 1350 }, deviceScaleFactor: scale });
   const errors = [];
   for (const m of memos) {
@@ -277,7 +281,7 @@ async function contactSheet(memos) {
     html,
     `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#0e1a2b}main{display:grid;grid-template-columns:repeat(${cols},1fr);gap:18px;padding:18px;width:1800px;box-sizing:border-box}img{width:100%;display:block;border-radius:6px}</style><main>${cells}</main>`
   );
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(LAUNCH);
   const page = await browser.newPage({ viewport: { width: 1800, height: 1000 } });
   await page.goto(`file://${html}`);
   await page.locator('main').screenshot({ path: path.join(DIST, 'contact-sheet.png') });
