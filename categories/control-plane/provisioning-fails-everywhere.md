@@ -22,7 +22,7 @@
 **Think before acting:**
 
 - ⛔ **Avoid.** Letting an unstable control plane keep accepting requests. It creates half-built instances and records that disagree.
-- ℹ️ **Know this.** Workloads are not at risk from the condition itself. They are at risk from an uncontrolled attempt to fix it.
+- ⛔ **Avoid.** Resetting a RabbitMQ node during a partition. The wrong reset discards the queues the services still use. Escalate first.
 
 ## Go deeper
 
@@ -32,7 +32,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Reopening provisioning after a control-plane incident. Stop the APIs, recover, verify, reopen](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/reopening-provisioning-after-control-plane-incident.md) · `draft` on 2026.1 · highest risk in the page: destructive
 - [Every API call fails at once. Expired TLS certificates or inconsistent Keystone Fernet keys](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/diagnostics/expired-certificates-and-fernet-keys-break-every-api-call.md) · `draft` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** The runbook is a draft: a read-only triage derived from an operator's incident, later traced to a RabbitMQ partition. Its checks were run on a Kolla-Ansible 2026.1 lab with three controllers, healthy and during a RabbitMQ memory alarm. What a RabbitMQ partition looks like depends on its metadata store (Mnesia or Khepri). Each dependency has its own memo and runbook for the repair.
+**Where this holds.** The runbook is a draft: a read-only triage derived from an operator's incident, later traced to a RabbitMQ partition. Its checks ran on a Kolla-Ansible 2026.1 lab with three controllers, healthy and during a RabbitMQ memory alarm; not run: certificates, Fernet keys, memcached, Galera out of Primary. What a RabbitMQ partition looks like depends on its metadata store (Mnesia or Khepri). With OVN the agent list does not reflect the bus. Keystone, the load balancer, Galera and RabbitMQ each have their own memo for the repair.
 
 ## LinkedIn kit
 

@@ -14,15 +14,15 @@
 
 **First checks** (read-only):
 
-1. **Instances, services, agents**: `openstack server list --all-projects --host <host> --long`
-2. **Did every service come back?**: `Kolla-Ansible: systemctl list-units 'kolla-*' --state=failed`
-3. **Does Nova resume guests?**: `grep resume_guests_state_on_host_boot nova.conf`
-4. **Interfaces up, expected MTU?**: `ip -br link`
+1. **Instances, once nova-compute is up**: `openstack server list --all-projects --host <host> --long`
+2. **Kolla units: did all come back?**: `systemctl list-units 'kolla-*' --state=failed,inactive,activating`
+3. **Does Nova resume guests?**: `grep -rn resume_guests_state /etc/nova/`
+4. **Interfaces up, expected MTU?**: `ip -br link ; ip link show <tunnel-if> | grep -o 'mtu [0-9]*'`
 
 **Think before acting:**
 
 - ⚠️ **State-changing.** Check with the owner before starting a `SHUTOFF` instance: one stopped on purpose looks the same.
-- ℹ️ **Know this.** Whatever was set by hand before the reboot is gone: an MTU, an interface brought up, an address moved.
+- ℹ️ **Know this.** Until `nova-compute` is up and has synchronised, Nova still shows the instances `ACTIVE`, from before the reboot.
 
 ## Go deeper
 
@@ -32,7 +32,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Every instance on one compute loses the network while Nova shows them ACTIVE (ovs-vswitchd down)](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/ovs-vswitchd-down-on-compute.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 - [Instances of one compute answer ping, but large transfers stall](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/tunnel-mtu-mismatch-large-packets-dropped.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** Written from the Nova 2026.1 configuration reference and Kolla-Ansible 2026.1, which does not set resume_guests_state_on_host_boot. Observed on one all-in-one lab: instances staying SHUTOFF, with and without the option, and an external interface down. Not observed: a container that does not come back, a lost MTU, and the reboot of a compute of a multinode platform. ML2/OVN and DPDK are not covered.
+**Where this holds.** Written from the Nova 2026.1 configuration reference and Kolla-Ansible 2026.1, which does not set resume_guests_state_on_host_boot. Observed on one all-in-one lab: instances SHUTOFF without the option and resumed with it, and an external interface taken down without a reboot. Not observed: a container that does not come back, a lost MTU, a host address on br-ex, a multinode platform. A failed unit of a service disabled after deployment is not the cause: compare with globals.yml. ML2/OVN and DPDK are not covered.
 
 ## LinkedIn kit
 

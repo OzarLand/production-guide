@@ -28,14 +28,14 @@ diagram:
       tone: warn
 
 checks:
-  - label: Instances, services, agents
+  - label: Instances, once nova-compute is up
     hint: openstack server list --all-projects --host <host> --long
-  - label: Did every service come back?
-    hint: "Kolla-Ansible: systemctl list-units 'kolla-*' --state=failed"
+  - label: "Kolla units: did all come back?"
+    hint: "systemctl list-units 'kolla-*' --state=failed,inactive,activating"
   - label: Does Nova resume guests?
-    hint: grep resume_guests_state_on_host_boot nova.conf
+    hint: grep -rn resume_guests_state /etc/nova/
   - label: Interfaces up, expected MTU?
-    hint: ip -br link
+    hint: "ip -br link ; ip link show <tunnel-if> | grep -o 'mtu [0-9]*'"
 
 caution:
   - level: state-changing
@@ -43,7 +43,8 @@ caution:
       Check with the owner before starting a `SHUTOFF` instance: one stopped on purpose looks the same.
   - level: know
     text: >-
-      Whatever was set by hand before the reboot is gone: an MTU, an interface brought up, an address moved.
+      Until `nova-compute` is up and has synchronised, Nova still shows the instances `ACTIVE`, from before
+      the reboot.
 
 lesson: A reboot brings back what is written down. Nova does not restart guests by default.
 
@@ -57,9 +58,10 @@ runbook:
 
 scope: >-
   Written from the Nova 2026.1 configuration reference and Kolla-Ansible 2026.1, which does not set
-  resume_guests_state_on_host_boot. Observed on one all-in-one lab: instances staying SHUTOFF, with and
-  without the option, and an external interface down. Not observed: a container that does not come back, a
-  lost MTU, and the reboot of a compute of a multinode platform. ML2/OVN and DPDK are not covered.
+  resume_guests_state_on_host_boot. Observed on one all-in-one lab: instances SHUTOFF without the option and
+  resumed with it, and an external interface taken down without a reboot. Not observed: a container that does
+  not come back, a lost MTU, a host address on br-ex, a multinode platform. A failed unit of a service
+  disabled after deployment is not the cause: compare with globals.yml. ML2/OVN and DPDK are not covered.
 
 linkedin:
   title: "After a compute reboot, the instances stay SHUTOFF. That is the default."

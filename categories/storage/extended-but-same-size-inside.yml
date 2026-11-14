@@ -32,7 +32,7 @@ checks:
     hint: openstack volume show <volume> -c size -c status
   - label: Cinder's messages for the volume
     hint: openstack --os-volume-api-version 3.3 volume message list
-  - label: Did Nova get the event?
+  - label: Did Nova receive the event?
     hint: openstack server event list <server>
   - label: What the guest sees
     hint: lsblk (inside the guest)
@@ -44,7 +44,8 @@ caution:
       its old size.
   - level: state-changing
     text: >-
-      A hard reboot makes Nova refresh the device, and stops the guest abruptly. Agree it with the owner.
+      A hard reboot shows the guest the new size, but stops it abruptly. Only if the event was lost or the
+      refresh failed, and agreed with the owner.
 
 lesson: Find the last stage that happened before you repeat the first.
 

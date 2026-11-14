@@ -4,9 +4,9 @@
 
 # PG-36 · Compute renamed or re-added?
 
-<img src="../../dist/pg-36-compute-renamed-or-re-added.png" alt="Compute renamed or re-added? Operational lesson: Three records must agree. Read the log, not the container status, to see which one differs." width="540">
+<img src="../../dist/pg-36-compute-renamed-or-re-added.png" alt="Compute renamed or re-added? Operational lesson: Three records must agree. A healthy container proves nothing: the log says which one differs." width="540">
 
-> **Operational lesson.** Three records must agree. Read the log, not the container status, to see which one differs.
+> **Operational lesson.** Three records must agree. A healthy container proves nothing: the log says which one differs.
 
 ## The memo as text
 
@@ -14,10 +14,10 @@
 
 **First checks** (read-only):
 
-1. **Service and hypervisor of the host**: `openstack compute service list --host <host> --long`
-2. **What Placement has for that name**: `openstack resource provider list --name <hostname>`
-3. **What the compute says it is**: `hostname ; cat /var/lib/nova/compute_id`
-4. **The exact refusal, in the log**: `grep -E 'refusing to start|Conflicting' nova-compute.log`
+1. **The service Nova has for this host**: `openstack compute service list --host <host> --long`
+2. **What Placement has for that name**: `openstack resource provider list --name <hypervisor-hostname>`
+3. **What the compute says it is**: `hostname -f ; cat /var/lib/nova/compute_id`
+4. **The exact refusal, in the log**: `grep -iE 'refusing to start|Conflicting' nova-compute.log`
 
 **Think before acting:**
 
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [A compute was renamed, reinstalled or re-added. nova-compute refuses to start, or gets no resource provider](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/compute-renamed-or-re-registered-resource-provider-conflict.md) · `draft` on 2026.1 · highest risk in the page: destructive
 - [Placement allocations do not match the instances. Compute looks full or empty, audit and heal](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/placement-allocations-out-of-sync-audit-and-heal.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** The runbook is a draft, written from the Nova and Placement 2026.1 sources and the upstream Compute Node Identification guide; the compute_id file exists from 2023.1. On a Kolla-Ansible lab, nova-compute logged "Possible rename detected" and kept running without heartbeat: the container stayed healthy while the service went down. With Kolla-Ansible the container keeps the host name it was created with.
+**Where this holds.** The runbook is a draft, written from the Nova and Placement 2026.1 sources and the upstream Compute Node Identification guide; the compute_id file exists from 2023.1. On a Kolla-Ansible lab the rename was simulated with [DEFAULT] host: nova-compute logged "Possible rename detected" and kept running, the container healthy, the service down. With the compute_id file lost, the container restarts in a loop instead (docker logs). The Placement name conflict was not reproduced. With Kolla-Ansible, read both inside the nova_compute container.
 
 ## LinkedIn kit
 

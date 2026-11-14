@@ -16,7 +16,7 @@ diagram:
       points:
         - "`nova-compute` stays up, agents alive"
         - New instances boot
-        - No warning in any log
+        - No time warning in its logs
       verdict: Nothing fails
     - kicker: What it breaks
       title: Your investigation
@@ -34,11 +34,11 @@ checks:
   - label: Is the clock synchronised?
     hint: timedatectl
   - label: Compare every host, in one run
-    hint: "on each host: date -u +%s"
+    hint: "ansible -i <inventory> all -m command -a 'date -u +%s'"
   - label: With chrony
     hint: chronyc tracking
   - label: Why the host lost its time
-    hint: "time service stopped, no server, server unreachable"
+    hint: "service stopped, no or unreachable server, clock set by hand"
 
 caution:
   - level: state-changing
@@ -60,11 +60,11 @@ runbook:
     - logs/time-sync-chrony-and-clock-skew.md
 
 scope: >-
-  Observed on one lab build: OpenStack 2026.1, Kolla-Ansible, Ubuntu 24.04 with systemd-timesyncd, a 300 s
-  backward drift on one compute for a few minutes. chrony was not run. Not tested: a drift on a controller, a
-  forward drift, a larger or longer offset, TLS certificate validity. Do not assume this memo applies to
-  them. Liveness is recorded on the controllers, with their clocks, which is why Nova and Neutron do not
-  complain.
+  Observed on one lab build: OpenStack 2026.1, Kolla-Ansible, ML2/OVS, Ubuntu 24.04 with systemd-timesyncd, a
+  300 s backward drift on one compute for a few minutes. chrony was not run. Not tested: a drift on a
+  controller, a forward drift, a larger or longer offset, TLS certificate validity, OVN. Do not assume this
+  memo applies to them. With Nova's database service group driver, liveness is recorded on the controllers,
+  with their clocks, which is why Nova and Neutron do not complain.
 
 linkedin:
   title: "The logs of one host do not line up: check its clock before your theory"
@@ -73,9 +73,9 @@ linkedin:
 
     Before building a theory around it, compare the clocks.
 
-    A compute whose clock is a few minutes off keeps working. On a lab, with 300 seconds of drift: nova-compute up, agents alive, new instances booting, no warning anywhere. Nothing fails and nothing alerts. The only thing it breaks is your investigation: its logs carry its own wrong time.
+    A compute whose clock is a few minutes off keeps working. On a lab, with 300 seconds of drift: nova-compute up, agents alive, new instances booting, no time-related warning in its logs. Nothing fails and nothing alerts. The only thing it breaks is your investigation: its logs carry its own wrong time.
 
-    One detail worth knowing: on a host where systemd-timesyncd is only stopped, asking for its status can start it, which steps the clock and erases the offset you wanted to measure. Compare the clocks first.
+    One detail worth knowing: on a host where systemd-timesyncd is only stopped, running timedatectl timesync-status starts it, which steps the clock and erases the offset you wanted to measure. Compare the clocks first.
 
-    A drift on a controller is another story, and a more serious one.
+    A drift on a controller is another story, likely a more serious one, and not tested here.
   hashtags: [OpenStack, Observability, IncidentResponse, SRE, CloudOperations, OzarLand]

@@ -10,12 +10,8 @@ diagram:
   head: [Task state and image, Where it is]
   split: 46
   rows:
-    - see: "`image_snapshot_pending`"
-      means: Not received yet
-      sub: nova-compute down or busy, or the bus
-      tone: warn
     - see: "`image_pending_upload`"
-      means: Written on the compute
+      means: Being written on the compute
       sub: Space and speed of the snapshots directory
       tone: warn
     - see: "`image_uploading`, image `saving`"
@@ -26,9 +22,13 @@ diagram:
       means: It failed
       sub: The compute log has the errors
       tone: stop
+    - see: "Task state cleared, image still `saving`"
+      means: The compute restarted
+      sub: A stale image is left in Glance
+      tone: stop
 
 checks:
-  - label: Task state and host
+  - label: Task state of the instance
     hint: openstack server show <id> -c OS-EXT-STS:task_state
   - label: The image, and its status
     hint: openstack image show <image> -c status -c size
@@ -40,13 +40,13 @@ checks:
 caution:
   - level: destructive
     text: >-
-      Deleting a `queued` or `saving` image. It may be another upload still running: match it to this
-      server first.
+      Deleting a `queued` or `saving` image. It may be an upload still running: task state cleared first,
+      and match the image to this server.
   - level: know
     text: >-
       The upload shows no progress: the image stays `saving`, with no size, until it turns `active`.
 
-lesson: A slow snapshot is often just a large disk. Check that it progresses before clearing anything.
+lesson: A slow snapshot is often just a large disk. No error in the compute log? Let it finish.
 
 runbook:
   path: lifecycle/snapshot-stuck-in-image-uploading.md
@@ -56,11 +56,12 @@ runbook:
     - lifecycle/compute-disk-full-instance-paused.md
 
 scope: >-
-  Written from the Nova 2026.1 source. Lab-run on the standard snapshot path for a slow upload, an upload
-  failure and a nova-compute restart during the snapshot. Not run: a full compute disk, a full or unreachable
-  Glance store, the cold snapshot, and the direct snapshot on Ceph RBD, where the states differ. With
-  Kolla-Ansible, HAProxy cuts an upload to Glance that lasts more than 6 hours. On the standard path the whole
-  disk is written on the compute before the upload: a full store there also freezes instances that write.
+  Written from the Nova 2026.1 source. Lab-run on the standard path for a slow upload, an upload failure and
+  a nova-compute restart mid-snapshot. Not run: a full compute disk or Glance store, the cold snapshot,
+  and the direct snapshot on Ceph RBD, where the states differ. With
+  Kolla-Ansible, HAProxy cuts an upload to Glance that lasts more than 6 hours. The whole disk is written on
+  the compute first: a full file system there (shared with the instances by default) can also freeze instances
+  that write. Earlier states: image_snapshot_pending (not received), image_snapshot (waiting for a slot).
 
 linkedin:
   title: "A snapshot that never finishes: find where it is before you clear it"
@@ -70,10 +71,10 @@ linkedin:
     Often not. On the standard path, the whole disk is first written on the compute, then uploaded to Glance, and the upload has no progress indicator at all: the image stays "saving", with no size, until the moment it turns active.
 
     The task state tells you where it is:
-    → image_snapshot_pending: the compute has not received it
     → image_pending_upload: being written on the compute
     → image_uploading with the image "saving": on its way to Glance
     → task state cleared and image gone: it failed, and the compute log says why
+    → task state cleared and the image still "saving": the compute restarted, and left a stale image behind
 
     The dangerous shortcut is deleting a "saving" image that turns out to be someone else's upload.
   hashtags: [OpenStack, Nova, Glance, CloudOperations, SRE, OzarLand]

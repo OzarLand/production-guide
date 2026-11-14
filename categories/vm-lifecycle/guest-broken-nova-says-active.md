@@ -16,13 +16,13 @@
 
 1. **State, image, boot from volume?**: `openstack server show <id> -c status -c image -c volumes_attached`
 2. **What the guest prints at boot**: `openstack console log show --lines 100 <id>`
-3. **Is rescue_timeout set?**: `default 0 (off). If set, Nova unrescues without warning`
+3. **Is rescue_timeout set?**: `nova.conf on its compute: 0 = off, else auto-unrescue at expiry`
 4. **In rescue: is / the rescue disk?**: `mount | grep ' / ' ; lsblk`
 
 **Think before acting:**
 
 - ⚠️ **State-changing.** Rescue stops the guest: its users lose it until the unrescue. Keep a copy of every file you change on its disk.
-- ℹ️ **Know this.** A volume-backed instance needs a stable device rescue: an image with `hw_rescue_*` properties and compute API 2.87.
+- ℹ️ **Know this.** A volume-backed instance needs both `hw_rescue_*` image properties, compute API 2.87 or later, and a compute with `COMPUTE_RESCUE_BFV`.
 
 ## Go deeper
 

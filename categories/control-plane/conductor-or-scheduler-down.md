@@ -15,9 +15,9 @@
 **First checks** (read-only):
 
 1. **Services, as Nova sees them**: `openstack compute service list`
-2. **Do their queues have consumers?**: `rabbitmqctl list_queues name messages consumers`
+2. **Do their queues have consumers?**: `rabbitmqctl list_queues -p <vhost> name messages consumers`
 3. **Their own logs**: `nova-conductor.log, nova-scheduler.log`
-4. **Builds waiting or failed meanwhile**: `openstack server list --all-projects --status BUILD`
+4. **Builds still waiting**: `openstack server list --all-projects --status BUILD`
 
 **Think before acting:**
 
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [nova-conductor or nova-scheduler is down. What still works, what waits, what fails, and where failed builds go (cell0)](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/nova-conductor-or-scheduler-down-what-still-works.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 - [RPC timeouts in every service, computes reported down. RabbitMQ is partitioned, blocked by an alarm, or a node is missing](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/rabbitmq-partition-or-alarm-rpc-timeouts.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Written from the Nova 2026.1 source and lab-verified with Kolla-Ansible. The 60 s is rpc_response_timeout, Nova's default. Builds that timed out are not retried: their owners build again. A start, stop or reboot sent while the conductor was down can leave a task state that nothing clears. Applies when every copy of the service is down; with one copy left, requests are still served.
+**Where this holds.** Written from the Nova 2026.1 source and lab-verified with Kolla-Ansible. The 60 s is rpc_response_timeout, Nova's default. Builds that timed out are not retried: their owners build again. A start, stop or reboot sent while the conductor was down can leave a task state that nothing clears. Applies when every copy of the service is down, in a single cell. Queued builds survive with quorum queues and RabbitMQ staying up; a RabbitMQ reset drops them.
 
 ## LinkedIn kit
 

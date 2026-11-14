@@ -14,14 +14,14 @@
 
 **First checks** (read-only):
 
-1. **Status, attachments, owner**: `openstack volume show <volume> -c status -c attachments`
+1. **Status, attachments, owning service**: `openstack volume show <volume> (status, attachments, host)`
 2. **Snapshots of the volume**: `openstack volume snapshot list --all-projects --volume <volume>`
 3. **Is its cinder-volume up?**: `openstack volume service list --service cinder-volume`
 4. **What that service logged**: `grep <volume-id> cinder-volume.log`
 
 **Think before acting:**
 
-- ⛔ **Avoid.** Forcing the delete of a volume that came back `available`. Something still has it open: that is exactly when it must not be deleted.
+- ⛔ **Avoid.** Forcing states or removing the backend image of a volume that came back `available`. Something still has it open: a guest may still write to it.
 - ⚠️ **State-changing.** Resetting the state while a delete is still running races it. An interrupted delete runs again when the service starts.
 
 ## Go deeper
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Volume stuck in deleting, in error_deleting, or back to available after a delete](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/volume-stuck-in-deleting-or-error-deleting.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 - [Stale volume attachment. The volume is still in-use for an instance that was deleted or evacuated](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/stale-volume-attachment-after-instance-deleted-or-evacuated.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Written from the Cinder 2026.1 source. Reproduced on an all-in-one lab with Cinder LVM for a service down, a backend failure and a delete refused by the API; the Ceph RBD and encrypted-volume parts were not. On LVM a volume still open gives error_deleting rather than available. A delete can also be refused at once: attached, with snapshots, migrating or in a group. Volumes in groups and transfers are not covered.
+**Where this holds.** Written from the Cinder 2026.1 source. Reproduced on an all-in-one lab with Cinder LVM for a service down, a backend failure and a delete refused by the API; the Ceph RBD and encrypted-volume parts were not. On LVM a volume still open gives error_deleting rather than available. A delete can also be refused at once: attached, with snapshots, migrating or in a group. If the request was lost, waiting is not enough: once the service is up and idle, reset to error and delete again. An encrypted volume loses its key as soon as the delete is accepted, even if it comes back available.
 
 ## LinkedIn kit
 
@@ -41,7 +41,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 ```text
 You delete a volume. It does not go away. What it does instead tells you the cause.
 
-→ It stays "deleting" and the log is silent: the cinder-volume service is down, or the request was lost. Bring the service back, then wait. An interrupted delete is run again at start-up.
+→ It stays "deleting" and the log is silent: the cinder-volume service is down, or the request was lost. Bring the service back, then wait: an interrupted delete is run again at start-up. If nothing happens once it is up, reset the volume to error and delete again.
 → It stays "deleting" and the log shows work in progress: a slow backend. Wait.
 → It turns "error_deleting" with a traceback: the backend failed. Fix what it names.
 → It comes back "available": the backend found the volume still open somewhere.

@@ -70,9 +70,9 @@ linkedin:
   caption: |
     A new instance is ACTIVE. It has its address. And nobody can log in: the SSH key was never installed, the user data never ran, the hostname is a default one.
 
-    At first boot, the guest asks 169.254.169.254 for its metadata. With ML2/OVS that request goes through a haproxy in the network's DHCP namespace, then the Neutron metadata agent, then Nova's metadata API. With every metadata agent down, it goes nowhere. The image waits, then boots without it.
+    At first boot, the guest asks 169.254.169.254 for its metadata. On a Kolla-Ansible ML2/OVS platform that request goes through a haproxy in the network's DHCP namespace, then the Neutron metadata agent, then Nova's metadata API. With every metadata agent down, it goes nowhere. The image waits, then boots without it.
 
     Nova reports nothing. Instances created earlier are fine.
 
-    The part that hurts: it stays broken after the agents are back. The first boot, the one that applies the key and the user data, is over. Every instance created during the outage has to be dealt with, one by one.
+    The part that hurts: it stays broken after the agents are back. The first boot, the one that applies the key and the user data, is over. Every instance created during the outage has to be dealt with, one by one: a reboot is enough for some images, others need a rebuild.
   hashtags: [OpenStack, Neutron, Nova, CloudInit, CloudOperations, OzarLand]

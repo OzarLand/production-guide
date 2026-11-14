@@ -4,9 +4,9 @@
 
 # PG-29 · Snapshot never finishes?
 
-<img src="../../dist/pg-29-snapshot-never-finishes.png" alt="Snapshot never finishes? Operational lesson: A slow snapshot is often just a large disk. Check that it progresses before clearing anything." width="540">
+<img src="../../dist/pg-29-snapshot-never-finishes.png" alt="Snapshot never finishes? Operational lesson: A slow snapshot is often just a large disk. No error in the compute log? Let it finish." width="540">
 
-> **Operational lesson.** A slow snapshot is often just a large disk. Check that it progresses before clearing anything.
+> **Operational lesson.** A slow snapshot is often just a large disk. No error in the compute log? Let it finish.
 
 ## The memo as text
 
@@ -14,14 +14,14 @@
 
 **First checks** (read-only):
 
-1. **Task state and host**: `openstack server show <id> -c OS-EXT-STS:task_state`
+1. **Task state of the instance**: `openstack server show <id> -c OS-EXT-STS:task_state`
 2. **The image, and its status**: `openstack image show <image> -c status -c size`
 3. **The steps logged on the compute**: `grep <server-id> nova-compute.log | grep -iE 'snapshot|upload'`
 4. **Space for the snapshot**: `df -h on [libvirt] snapshots_directory`
 
 **Think before acting:**
 
-- 🛑 **Destructive.** Deleting a `queued` or `saving` image. It may be another upload still running: match it to this server first.
+- 🛑 **Destructive.** Deleting a `queued` or `saving` image. It may be an upload still running: task state cleared first, and match the image to this server.
 - ℹ️ **Know this.** The upload shows no progress: the image stays `saving`, with no size, until it turns `active`.
 
 ## Go deeper
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Instance snapshot never finishes. Task state image_pending_upload or image_uploading, image queued or saving](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/snapshot-stuck-in-image-uploading.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 - [Compute disk full. An instance that writes is frozen, while Nova still shows it ACTIVE](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/compute-disk-full-instance-paused.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Written from the Nova 2026.1 source. Lab-run on the standard snapshot path for a slow upload, an upload failure and a nova-compute restart during the snapshot. Not run: a full compute disk, a full or unreachable Glance store, the cold snapshot, and the direct snapshot on Ceph RBD, where the states differ. With Kolla-Ansible, HAProxy cuts an upload to Glance that lasts more than 6 hours. On the standard path the whole disk is written on the compute before the upload: a full store there also freezes instances that write.
+**Where this holds.** Written from the Nova 2026.1 source. Lab-run on the standard path for a slow upload, an upload failure and a nova-compute restart mid-snapshot. Not run: a full compute disk or Glance store, the cold snapshot, and the direct snapshot on Ceph RBD, where the states differ. With Kolla-Ansible, HAProxy cuts an upload to Glance that lasts more than 6 hours. The whole disk is written on the compute first: a full file system there (shared with the instances by default) can also freeze instances that write. Earlier states: image_snapshot_pending (not received), image_snapshot (waiting for a slot).
 
 ## LinkedIn kit
 
@@ -44,10 +44,10 @@ An instance snapshot has been running for an hour. The image is still "saving". 
 Often not. On the standard path, the whole disk is first written on the compute, then uploaded to Glance, and the upload has no progress indicator at all: the image stays "saving", with no size, until the moment it turns active.
 
 The task state tells you where it is:
-→ image_snapshot_pending: the compute has not received it
 → image_pending_upload: being written on the compute
 → image_uploading with the image "saving": on its way to Glance
 → task state cleared and image gone: it failed, and the compute log says why
+→ task state cleared and the image still "saving": the compute restarted, and left a stale image behind
 
 The dangerous shortcut is deleting a "saving" image that turns out to be someone else's upload.
 

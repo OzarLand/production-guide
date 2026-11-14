@@ -11,4 +11,4 @@
 - **PG-23** [Live migration never completes?](live-migration-never-completes.md): Watch whether the remaining memory goes down. If it hovers, waiting will not help.
 - **PG-34** [Steal time on pinned CPUs?](steal-time-on-pinned-cpus.md): Live migration moves the symptom, not the cause. The cause is on the host.
 - **PG-35** [After a reboot, VMs stay off?](after-a-compute-reboot.md): A reboot brings back what is written down. Nova does not restart guests by default.
-- **PG-36** [Compute renamed or re-added?](compute-renamed-or-re-added.md): Three records must agree. Read the log, not the container status, to see which one differs.
+- **PG-36** [Compute renamed or re-added?](compute-renamed-or-re-added.md): Three records must agree. A healthy container proves nothing: the log says which one differs.

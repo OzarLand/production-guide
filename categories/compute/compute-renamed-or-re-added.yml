@@ -35,14 +35,14 @@ diagram:
     there.
 
 checks:
-  - label: Service and hypervisor of the host
+  - label: The service Nova has for this host
     hint: openstack compute service list --host <host> --long
   - label: What Placement has for that name
-    hint: openstack resource provider list --name <hostname>
+    hint: openstack resource provider list --name <hypervisor-hostname>
   - label: What the compute says it is
-    hint: hostname ; cat /var/lib/nova/compute_id
+    hint: hostname -f ; cat /var/lib/nova/compute_id
   - label: The exact refusal, in the log
-    hint: grep -E 'refusing to start|Conflicting' nova-compute.log
+    hint: grep -iE 'refusing to start|Conflicting' nova-compute.log
 
 caution:
   - level: destructive
@@ -53,7 +53,7 @@ caution:
     text: >-
       Renaming a registered compute. Upstream does not support it: give the compute its old name back.
 
-lesson: Three records must agree. Read the log, not the container status, to see which one differs.
+lesson: "Three records must agree. A healthy container proves nothing: the log says which one differs."
 
 runbook:
   path: scheduling/compute-renamed-or-re-registered-resource-provider-conflict.md
@@ -64,9 +64,10 @@ runbook:
 
 scope: >-
   The runbook is a draft, written from the Nova and Placement 2026.1 sources and the upstream Compute Node
-  Identification guide; the compute_id file exists from 2023.1. On a Kolla-Ansible lab, nova-compute logged
-  "Possible rename detected" and kept running without heartbeat: the container stayed healthy while the
-  service went down. With Kolla-Ansible the container keeps the host name it was created with.
+  Identification guide; the compute_id file exists from 2023.1. On a Kolla-Ansible lab the rename was simulated
+  with [DEFAULT] host: nova-compute logged "Possible rename detected" and kept running, the container healthy,
+  the service down. With the compute_id file lost, the container restarts in a loop instead (docker logs). The
+  Placement name conflict was not reproduced. With Kolla-Ansible, read both inside the nova_compute container.
 
 linkedin:
   title: "A compute was renamed. Now nova-compute refuses to start."

@@ -16,13 +16,13 @@
 
 1. **Cinder's view: size and status**: `openstack volume show <volume> -c size -c status`
 2. **Cinder's messages for the volume**: `openstack --os-volume-api-version 3.3 volume message list`
-3. **Did Nova get the event?**: `openstack server event list <server>`
+3. **Did Nova receive the event?**: `openstack server event list <server>`
 4. **What the guest sees**: `lsblk (inside the guest)`
 
 **Think before acting:**
 
 - ⚠️ **State-changing.** Resetting `error_extending` changes Cinder's record only. Check first that the backend volume still has its old size.
-- ⚠️ **State-changing.** A hard reboot makes Nova refresh the device, and stops the guest abruptly. Agree it with the owner.
+- ⚠️ **State-changing.** A hard reboot shows the guest the new size, but stops it abruptly. Only if the event was lost or the refresh failed, and agreed with the owner.
 
 ## Go deeper
 

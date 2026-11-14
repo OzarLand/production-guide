@@ -46,10 +46,10 @@ caution:
     text: >-
       Letting an unstable control plane keep accepting requests. It creates half-built instances and records
       that disagree.
-  - level: know
+  - level: avoid
     text: >-
-      Workloads are not at risk from the condition itself. They are at risk from an uncontrolled attempt to
-      fix it.
+      Resetting a RabbitMQ node during a partition. The wrong reset discards the queues the services still
+      use. Escalate first.
 
 lesson: When everything fails at once, look at what everything shares.
 
@@ -63,9 +63,9 @@ runbook:
 
 scope: >-
   The runbook is a draft: a read-only triage derived from an operator's incident, later traced to a RabbitMQ
-  partition. Its checks were run on a Kolla-Ansible 2026.1 lab with three controllers, healthy and during a
-  RabbitMQ memory alarm. What a RabbitMQ partition looks like depends on its metadata store (Mnesia or
-  Khepri). Each dependency has its own memo and runbook for the repair.
+  partition. Its checks ran on a Kolla-Ansible 2026.1 lab with three controllers, healthy and during a
+  RabbitMQ memory alarm; not run: certificates, Fernet keys, memcached, Galera out of Primary. What a RabbitMQ partition looks like depends on its metadata store (Mnesia or
+  Khepri). With OVN the agent list does not reflect the bus. Keystone, the load balancer, Galera and RabbitMQ each have their own memo for the repair.
 
 linkedin:
   title: "VM creation fails everywhere: the cause is rarely in Nova"

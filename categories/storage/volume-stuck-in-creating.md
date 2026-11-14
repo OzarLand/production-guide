@@ -4,9 +4,9 @@
 
 # PG-40 · Volume stuck in creating?
 
-<img src="../../dist/pg-40-volume-stuck-in-creating.png" alt="Volume stuck in creating? Operational lesson: No host means the scheduler. A host set means the backend. Cinder's message says the rest." width="540">
+<img src="../../dist/pg-40-volume-stuck-in-creating.png" alt="Volume stuck in creating? Operational lesson: No host: the scheduler. A host set: the backend. Cinder's message, or its log, says the rest." width="540">
 
-> **Operational lesson.** No host means the scheduler. A host set means the backend. Cinder's message says the rest.
+> **Operational lesson.** No host: the scheduler. A host set: the backend. Cinder's message, or its log, says the rest.
 
 ## The memo as text
 
@@ -14,7 +14,7 @@
 
 **First checks** (read-only):
 
-1. **Status, chosen backend, type**: `openstack volume show <volume> -c status -c os-vol-host-attr:host`
+1. **Status, chosen backend, type**: `openstack volume show <id> -c status -c os-vol-host-attr:host -c type`
 2. **Cinder's own explanation**: `openstack --os-volume-api-version 3.3 volume message list`
 3. **Are the Cinder services up?**: `openstack volume service list`
 4. **What each pool has left**: `openstack volume backend pool list --long`
@@ -46,7 +46,7 @@ One field splits the problem in two, the host Cinder chose for the volume:
 → creating, and that host's cinder-volume is down: the service stopped with the request in hand.
 → creating, no host, every service up: the request was lost. Look at RabbitMQ.
 
-And Cinder often explains itself in one line: openstack volume message list.
+And Cinder often explains itself in one line: openstack --os-volume-api-version 3.3 volume message list.
 
 The shortcut to avoid is forcing the status while a backend is in fact still working on the volume.
 

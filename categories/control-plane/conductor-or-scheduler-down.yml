@@ -31,10 +31,10 @@ checks:
   - label: Services, as Nova sees them
     hint: openstack compute service list
   - label: Do their queues have consumers?
-    hint: rabbitmqctl list_queues name messages consumers
+    hint: rabbitmqctl list_queues -p <vhost> name messages consumers
   - label: Their own logs
     hint: nova-conductor.log, nova-scheduler.log
-  - label: Builds waiting or failed meanwhile
+  - label: Builds still waiting
     hint: openstack server list --all-projects --status BUILD
 
 caution:
@@ -59,7 +59,8 @@ scope: >-
   Written from the Nova 2026.1 source and lab-verified with Kolla-Ansible. The 60 s is rpc_response_timeout,
   Nova's default. Builds that timed out are not retried: their owners build again. A start, stop or reboot
   sent while the conductor was down can leave a task state that nothing clears. Applies when every copy of
-  the service is down; with one copy left, requests are still served.
+  the service is down, in a single cell. Queued builds survive with quorum queues and RabbitMQ staying up; a
+  RabbitMQ reset drops them.
 
 linkedin:
   title: "nova-conductor down: every compute looks dead, and none of them is"

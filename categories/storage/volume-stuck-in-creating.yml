@@ -29,7 +29,7 @@ diagram:
 
 checks:
   - label: Status, chosen backend, type
-    hint: openstack volume show <volume> -c status -c os-vol-host-attr:host
+    hint: openstack volume show <id> -c status -c os-vol-host-attr:host -c type
   - label: Cinder's own explanation
     hint: openstack --os-volume-api-version 3.3 volume message list
   - label: Are the Cinder services up?
@@ -47,7 +47,7 @@ caution:
       A volume that was never `available` holds no user data, but it counts in the quota until it is
       deleted.
 
-lesson: No host means the scheduler. A host set means the backend. Cinder's message says the rest.
+lesson: "No host: the scheduler. A host set: the backend. Cinder's message, or its log, says the rest."
 
 runbook:
   path: volumes/volume-stuck-in-creating-or-error-after-create.md
@@ -71,7 +71,7 @@ linkedin:
     → creating, and that host's cinder-volume is down: the service stopped with the request in hand.
     → creating, no host, every service up: the request was lost. Look at RabbitMQ.
 
-    And Cinder often explains itself in one line: openstack volume message list.
+    And Cinder often explains itself in one line: openstack --os-volume-api-version 3.3 volume message list.
 
     The shortcut to avoid is forcing the status while a backend is in fact still working on the volume.
   hashtags: [OpenStack, Cinder, Storage, CloudOperations, SRE, OzarLand]

@@ -32,7 +32,7 @@ diagram:
 checks:
   - label: Can the API build a URL?
     hint: openstack console url show <server-id>
-  - label: The instance and its compute
+  - label: Is its nova-compute up?
     hint: openstack compute service list --host <compute>
   - label: Why the proxy refused
     hint: nova-novncproxy.log, on the controllers
@@ -42,12 +42,12 @@ checks:
 caution:
   - level: state-changing
     text: >-
-      Restarting the console proxy disconnects every open console of the platform.
+      Restarting the console proxy disconnects the open consoles.
   - level: know
     text: >-
       Through Kolla-Ansible's HAProxy, a session is cut after one hour. Users reconnect with a new URL.
 
-lesson: A console is a chain of four hops. The proxy log says which one refused.
+lesson: A console is a chain of hops. The API answer or the proxy log says which one refused.
 
 runbook:
   path: lifecycle/console-not-available-or-disconnects.md
@@ -57,12 +57,12 @@ runbook:
 scope: >-
   The runbook is a draft, written from the Nova 2026.1 remote console guide and source and from Kolla-Ansible
   2026.1; it was not reproduced on a lab. It follows noVNC, Kolla-Ansible's default; SPICE is covered only by
-  equivalence. Common causes: an expired token, a public URL the browser cannot use, a proxy that cannot
-  reach the compute's VNC ports, or the proxy service down. VNC TLS, serial consoles and Horizon's own
+  equivalence. Causes covered: an expired token, a public URL the browser cannot use, a proxy that cannot
+  reach the compute's VNC ports, the compute down or VNC off, the proxy down. VNC TLS, serial consoles and Horizon's own
   configuration are not covered.
 
 linkedin:
-  title: "The instance console does not open: four hops, one log"
+  title: "The instance console does not open: four hops, two places to look"
   caption: |
     "The console doesn't work." It is one of the vaguest tickets an OpenStack team gets, and usually nothing is wrong with the instance.
 
@@ -72,9 +72,9 @@ linkedin:
     → the proxy connects to the compute, on the guest's VNC port
     → the guest's own VNC device, in libvirt
 
-    Each one fails differently: a blank page, an Origin error, "the token is invalid or has expired", a connection refused. The console proxy log tells you which hop refused.
+    Each one fails differently: a blank page, an Origin error, "the token is invalid or has expired", a connection refused. The API's answer, then the console proxy log, tell you which hop refused.
 
-    The most common cause is also the most boring one: a URL opened too late, or reused.
+    Start with the most boring cause: a URL opened too late, or reused.
 
     Source runbook status: draft.
   hashtags: [OpenStack, Nova, Troubleshooting, CloudOperations, SRE, OzarLand]

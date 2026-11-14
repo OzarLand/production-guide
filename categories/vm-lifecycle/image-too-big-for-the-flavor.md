@@ -14,7 +14,7 @@
 
 **First checks** (read-only):
 
-1. **Image sizes and minimums**: `openstack image show <image> -c size -c virtual_size -c min_disk`
+1. **Image sizes and min_disk**: `openstack image show <image> -c size -c virtual_size -c min_disk`
 2. **Flavor root disk and RAM**: `openstack flavor show <flavor> -c disk -c ram`
 3. **The fault of the instance**: `openstack server show <id> -c fault`
 4. **Mind the units**: `flavor disk in GB ; image size and virtual_size in bytes`
@@ -22,7 +22,7 @@
 **Think before acting:**
 
 - ⚠️ **State-changing.** Changing `min_disk` or `min_ram` on an image applies to every later boot of it, for every user.
-- ℹ️ **Know this.** A flavor with disk 0 is meant for volume-backed servers. An image-backed boot with it is refused for non-admins.
+- ℹ️ **Know this.** A flavor with disk 0 is meant for volume-backed servers. By default policy, an image-backed boot with it is refused for non-admins.
 
 ## Go deeper
 
@@ -30,7 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [Boot refused or aborted because the flavor's disk is too small for the image](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/image-larger-than-flavor-disk.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** Written from the Nova 2026.1 source and lab-run on Kolla-Ansible with local disks: an image without min_disk, a zero-disk flavor and min_ram. Not run: the API refusal on the image file size, and the check on a Ceph RBD image backend. Booting from a volume of the right size is the other way out: the flavor's disk is then not used for the root disk. Resizes to a smaller disk are another subject.
+**Where this holds.** Written from the Nova 2026.1 source and lab-run on Kolla-Ansible with local disks: an image without min_disk, a zero-disk flavor and min_ram. Not run: the API refusal on the image file size, and the check on a Ceph RBD image backend. Booting from a volume of the right size is the other way out: the flavor's disk is then not used for the root disk, but the volume must be at least min_disk. Resizes to a smaller disk are another subject.
 
 ## LinkedIn kit
 
@@ -38,7 +38,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - **Post title:** Flavor's disk is too small: the file size is not the disk size
 
 ```text
-The same image, the same flavor. Sometimes the boot is refused at once. Sometimes the instance is scheduled, the image is downloaded, and the build is aborted.
+A flavor too small for an image. Sometimes the boot is refused at once. Sometimes the instance is scheduled, the image is downloaded, and the build is aborted. The difference is on the image.
 
 Nova checks the image against the flavor twice, with two different numbers:
 → at the API, before scheduling: the size of the image FILE, and its min_disk

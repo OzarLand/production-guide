@@ -3,7 +3,7 @@ category: networking
 title: Binding failed for port?
 situation: >-
   A build goes to `ERROR`, or a live migration is refused at once. Neutron could not bind the port on that
-  host. Ports already bound keep working.
+  host.
 
 diagram:
   type: branches
@@ -12,8 +12,8 @@ diagram:
   rows:
     - see: "Refusing to bind port ... to dead agent"
       mono: true
-      means: The agent is dead
-      sub: OVS agent or ovn-controller of that host
+      means: Agent dead, or renamed
+      sub: Renamed = alive under another name
       tone: stop
     - see: "... no OVN chassis for host: <host>"
       mono: true
@@ -33,10 +33,10 @@ checks:
   - label: The port, if it still exists
     hint: openstack port show <port> -c binding_host_id -c binding_vif_type
   - label: Network type, physical network
-    hint: openstack network show <network> -c provider:network_type
+    hint: "openstack network show <network> | grep provider:"
   - label: Agents under that host name
     hint: openstack network agent list --host <compute>
-  - label: Which driver refused, and why
+  - label: What the server log says
     hint: grep <port-id> neutron-server.log | grep -iE 'bind|refusing'
 
 caution:
@@ -60,21 +60,23 @@ runbook:
 
 scope: >-
   The runbook is a draft, written from the Neutron and Nova 2026.1 sources. A dead agent, mismatched host
-  names and a missing mapping were reproduced on an ML2/OVS Kolla-Ansible lab; the ML2/OVN parts and an
-  unsupported network type were not. Ports Nova created for a build are deleted when it fails. SR-IOV,
+  names (simulated) and a missing mapping (symptom only) were reproduced on an ML2/OVS Kolla-Ansible lab; the ML2/OVN parts and an
+  unsupported network type were not. Ports already bound keep working; ports Nova created for a build are deleted when it fails. SR-IOV,
   hardware offload, routed provider networks and Ironic ports are not covered.
 
 linkedin:
-  title: "\"Binding failed for port\": the Neutron server log already says why"
+  title: "\"Binding failed for port\": start with the Neutron server log"
   caption: |
-    A build ends in ERROR, or a live migration is refused before it starts: "Binding failed for port, please check neutron logs for more information."
+    A build ends in ERROR with "Binding failed for port <id>, please check neutron logs for more information." Or a live migration is refused before it starts, sometimes as "No valid host".
 
-    For once the message is right. The answer is in the Neutron server log, for that port ID.
+    For once the message points the right way: start with the Neutron server log, for that port ID.
 
     When Nova allocates or moves a port, it gives Neutron a host name. Neutron then asks each mechanism driver to bind the port on that host. Three usual refusals:
-    → the agent on that host is dead
+    → the agent on that host is dead, or was renamed and is alive under another name
     → no agent or chassis is registered under that exact name: a short name on one side, an FQDN on the other
     → the host has no bridge mapping for the network's physical network
+
+    With ML2/OVS, the last two are only logged at debug level: the agent list and the network type tell them apart.
 
     One rule when names differ: change the Neutron side, never Nova's host on a compute that has instances.
 

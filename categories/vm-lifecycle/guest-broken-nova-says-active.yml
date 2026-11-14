@@ -22,7 +22,8 @@ diagram:
       sub: It boots from its own disk again
       tone: ok
   note: >-
-    The data is intact on the instance's disk. The rescue itself does not change it.
+    The rescue itself does not change its disks. While in `RESCUE`, never pause, suspend or stop it: unrescue
+    becomes impossible.
 
 checks:
   - label: State, image, boot from volume?
@@ -30,7 +31,7 @@ checks:
   - label: What the guest prints at boot
     hint: openstack console log show --lines 100 <id>
   - label: Is rescue_timeout set?
-    hint: "default 0 (off). If set, Nova unrescues without warning"
+    hint: "nova.conf on its compute: 0 = off, else auto-unrescue at expiry"
   - label: "In rescue: is / the rescue disk?"
     hint: "mount | grep ' / ' ; lsblk"
 
@@ -41,8 +42,8 @@ caution:
       its disk.
   - level: know
     text: >-
-      A volume-backed instance needs a stable device rescue: an image with `hw_rescue_*` properties and
-      compute API 2.87.
+      A volume-backed instance needs both `hw_rescue_*` image properties, compute API 2.87 or later, and a
+      compute with `COMPUTE_RESCUE_BFV`.
 
 lesson: The fault is in the guest, the data is intact. Rescue mode gets you to the disk.
 
