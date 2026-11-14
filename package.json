@@ -1,0 +1,16 @@
+{
+  "name": "ozarland-production-guide",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OzarLand Production Guide: visual memos for OpenStack operators",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "validate": "node scripts/build.cjs --validate",
+    "new": "node scripts/new-memo.cjs"
+  },
+  "dependencies": {
+    "playwright": "1.63.0",
+    "yaml": "2.9.1"
+  }
+}

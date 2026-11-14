@@ -1,0 +1,75 @@
+id: PG-04
+category: vm-lifecycle
+title: VM stuck in deleting?
+situation: >-
+  `task_state` stays `deleting`, and deleting again does nothing. With its compute up, the API sent the
+  request and the compute did not finish it.
+
+diagram:
+  type: compare
+  caption: A delete takes one of two paths
+  columns:
+    - kicker: Compute service up
+      title: Normal delete
+      icon: server
+      tone: ok
+      points:
+        - The API hands the delete to `nova-compute`
+        - It destroys the guest, then frees ports, volumes and the allocation
+      verdict: Stuck = not received, or not finished
+    - kicker: Compute service down
+      title: Local delete
+      icon: database
+      tone: warn
+      points:
+        - The API removes the records, ports, attachments and allocation itself
+        - Nothing is done on the host
+      verdict: The guest may still run there
+  note: >-
+    Restarting `nova-compute` resumes every delete left in `deleting` on its host.
+
+checks:
+  - label: Task state, host, lock, fault
+    hint: openstack server show <id> -c locked -c fault
+  - label: Is its compute up for Nova?
+    hint: openstack compute service list --service nova-compute --host <host>
+  - label: Does the guest still exist?
+    hint: virsh list --all --uuid | grep <server-id>
+  - label: Did the compute get the request?
+    hint: grep "Terminating instance" nova-compute.log
+
+caution:
+  - level: avoid
+    text: >-
+      `virsh undefine`, removing disks by hand, editing the database. Four services would keep records
+      that no longer match the host.
+  - level: destructive
+    text: >-
+      Forcing the compute service down turns every delete on that host into a local delete. Only for a host
+      that is fenced.
+
+lesson: A delete has two paths. Know which one Nova will take before you retry.
+
+runbook:
+  path: lifecycle/instance-stuck-in-deleting.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from the Nova 2026.1 source; three of five causes reproduced on an all-in-one lab. A local delete
+  also deletes the volumes created with delete_on_termination. Soft delete (reclaim_instance_interval),
+  Ironic and down cells are not covered.
+
+linkedin:
+  title: "VM stuck in deleting: why deleting it again does nothing"
+  caption: |
+    An instance stays in task_state "deleting". You run the delete again. Nothing changes.
+
+    That is by design: while the compute is up, Nova ignores a second delete for an instance already in deleting.
+
+    What matters is which of two paths the delete takes:
+    → Compute service UP: the API hands the delete to nova-compute, which destroys the guest and frees ports, volumes and the allocation. Stuck means the compute never got the request, or never finished it.
+    → Compute service DOWN: a local delete. The records go, nothing is done on the host. If that host is not really dead, the guest keeps running.
+
+    The shortcuts (virsh undefine, a database edit) leave four services with records that no longer match reality.
+  hashtags: [OpenStack, Nova, Troubleshooting, CloudOperations, SRE, OzarLand]

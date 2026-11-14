@@ -1,0 +1,63 @@
+# Template for one memo. Copy it with:  npm run new -- <category> <slug>
+# One memo = one operational lesson = one memorable visual.
+# Everything here must be backed by the runbook named under "runbook". Do not add a check, a number or a
+# procedure the runbook does not contain. Inline markup: `code` and **bold**. No emoji.
+# Length limits are enforced by the build (scripts/lib/content.cjs) and so is "it fits on the canvas".
+
+id: PG-00                       # next free number, never reused
+category: vm-lifecycle          # vm-lifecycle | compute | networking | storage | control-plane | production-operations
+
+title: Short operational question?        # 40 characters at most; up to 24 fits on one line at full size
+situation: >-
+  What the operator sees, and what it means, in two or three lines. 190 characters at most.
+
+diagram:                        # one of three components: chain, branches, compare (see DESIGN.md)
+  type: chain
+  caption: What the picture shows
+  nodes:                        # 2 to 5 nodes. tone: ok | warn | stop | mute | ink
+    - label: First step
+      sub: What happens here
+      icon: server              # any file name in assets/icons, without .svg
+      tone: ok
+    - label: Second step
+      sub: Where it stops
+      icon: network
+      tone: stop
+  links: [broken]               # one per arrow: ok | broken | back | "broken back"
+  note: One sentence of context, a default value, a version. Optional.
+
+checks:                         # exactly 4, all READ-ONLY. A check never changes the platform.
+  - label: What to look at
+    hint: openstack ... the command or the place, 70 characters at most
+  - label: Second check
+    hint: openstack ...
+  - label: Third check
+    hint: openstack ...
+  - label: Fourth check
+    hint: openstack ...
+
+caution:                        # 1 or 2. level: destructive | state-changing | avoid | know
+  - level: destructive
+    text: >-
+      What can be lost, and the precondition. 150 characters at most.
+  - level: avoid
+    text: >-
+      The tempting shortcut, and why not.
+
+lesson: The one sentence to remember. 100 characters at most.
+
+runbook:
+  path: lifecycle/the-runbook-page.md     # must exist in OzarLand/openstack-vm-runbooks, checked by the build
+  status: lab-verified                    # copied from the runbook's front matter, checked by the build
+  release: "2026.1"                       # a release listed in the runbook's openstack_releases
+  # also:                                 # other runbooks the memo draws on
+  #   - networking/another-page.md
+
+scope: >-
+  Where this holds: release, deployment method, backend. What the runbook did not test. What differs elsewhere.
+
+linkedin:
+  title: "The post title, 90 characters at most"
+  caption: |
+    The post text. Short paragraphs. It must make sense without the image, and never promise more than the memo.
+  hashtags: [OpenStack, CloudOperations, OzarLand]     # 3 to 8, without the #

@@ -1,0 +1,87 @@
+id: PG-05
+category: vm-lifecycle
+title: ACTIVE in Nova, frozen for users?
+situation: >-
+  The instance store of a compute is full. QEMU pauses each instance at its next write. Nova keeps showing
+  `ACTIVE`, and the guest reports no error: its write just stops.
+
+diagram:
+  type: compare
+  caption: Three views of the same instance
+  columns:
+    - kicker: Nova status
+      title: ACTIVE
+      icon: cloud
+      tone: mute
+      points:
+        - What users and most monitoring read
+        - No fault, no error in the logs
+    - kicker: Nova power state
+      title: Paused
+      icon: pause
+      tone: warn
+      points:
+        - The only signal in Nova
+        - "Shown by `server list --long`"
+    - kicker: libvirt on the compute
+      title: paused (I/O error)
+      icon: hard-drive
+      tone: stop
+      points:
+        - The reason, from the hypervisor
+        - "Shown by `virsh domstate`"
+  note: >-
+    Placement counts the disk of the flavors, not the space guests use. The scheduler keeps sending instances
+    to the full compute.
+
+checks:
+  - label: ACTIVE but paused instances
+    hint: openstack server list --all-projects --long | grep -i paused
+  - label: Is the instance store full?
+    hint: df -h /var/lib/nova/instances
+  - label: Why each domain is paused
+    hint: virsh domstate <domain> --reason
+  - label: What filled it
+    hint: "du on the store: instance disks, _base, logs, stray files"
+
+caution:
+  - level: destructive
+    text: >-
+      Never delete or truncate an instance disk, or a `_base` image that a running instance still uses as
+      its backing file.
+  - level: know
+    text: >-
+      Freeing space does not resume them, and `server unpause` does not apply. Resume each domain with
+      `virsh resume`.
+
+lesson: Nova does not watch the disk. Monitor the instance store and the power state.
+
+runbook:
+  path: lifecycle/compute-disk-full-instance-paused.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Lab-verified on OpenStack 2026.1 with Kolla-Ansible, local qcow2 instance disks and CirrOS guests. Not
+  tested with Ceph or other shared instance storage, volume-backed instances, or raw and LVM image backends.
+  The pause comes from QEMU's default write-error policy; other releases were not checked. With
+  Kolla-Ansible the store is the nova_compute Docker volume, not /var/lib/nova/instances on the host.
+
+linkedin:
+  title: "ACTIVE in Nova, frozen for the user: the silent full disk"
+  caption: |
+    A user says their VM "hangs". Nova says ACTIVE. No fault, no error in the logs.
+
+    The compute's instance store is full. QEMU paused the instance on its next write, and it will wait there, losing nothing, until someone resumes it.
+
+    Three views of the same instance:
+    → Nova status: ACTIVE
+    → Nova power state: Paused (the only signal in Nova)
+    → libvirt: paused (I/O error)
+
+    Placement does not help: it counts the disk of flavors, not the space guests actually use, so the scheduler keeps placing instances on the full host.
+
+    Freeing space is not enough. The domains stay paused until they are resumed.
+
+    Monitor the instance store, and alert on "ACTIVE but Paused".
+  hashtags: [OpenStack, Nova, Libvirt, Monitoring, CloudOperations, OzarLand]

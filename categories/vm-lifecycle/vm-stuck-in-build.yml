@@ -1,0 +1,82 @@
+id: PG-01
+category: vm-lifecycle
+title: VM stuck in BUILD?
+situation: >-
+  `BUILD` / `spawning` for about five minutes, then `ERROR`. A host **was** selected. Nova is waiting for
+  Neutron to say the port is wired, and that event never comes.
+
+diagram:
+  type: chain
+  caption: Where the build is waiting
+  nodes:
+    - label: Scheduler
+      sub: Host selected, allocation in Placement
+      icon: list-checks
+      tone: ok
+    - label: nova-compute
+      sub: Waits for `network-vif-plugged`
+      icon: server
+      tone: warn
+      badge: clock
+    - label: neutron-server
+      sub: Sends the event once the port is up
+      icon: network
+      tone: mute
+    - label: Agent on the host
+      sub: OVS agent or ovn-controller never wires the port
+      icon: cable
+      tone: stop
+  links: [ok, broken back, broken back]
+  note: >-
+    After `vif_plugging_timeout` (default 300 s) the build is aborted: "Failed to allocate the network(s),
+    not rescheduling."
+
+checks:
+  - label: Fault and selected host
+    hint: openstack server show <id> -c fault -c OS-EXT-SRV-ATTR:host
+  - label: Port binding and status
+    hint: openstack port show <port> -c binding_vif_type -c status
+  - label: Networking agent on that host
+    hint: openstack network agent list --host <compute>
+  - label: One host, or all of them?
+    hint: openstack server list --all-projects --status ERROR --long
+
+caution:
+  - level: avoid
+    text: >-
+      Recreating before the cause is fixed. Nova does not retry the build elsewhere, and each failure leaves
+      an `ERROR` instance that holds quota.
+  - level: state-changing
+    text: >-
+      Restarting the OVS agent or ovn-controller touches the data plane of the host. Do it on one host first.
+
+lesson: A networking problem wearing a compute symptom.
+
+runbook:
+  path: lifecycle/instance-stuck-in-build-waiting-for-vif-plugged.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  The mechanism (Nova waiting for network-vif-plugged, bounded by vif_plugging_timeout) is stable across recent
+  releases. Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS; the OVN steps of the runbook were
+  not run on a lab. The diagram shows the most common cause; the runbook also covers Neutron being unable to
+  notify Nova, and a host that is simply slow. If network-vif-plugged was received and the boot still fails,
+  this is another problem.
+
+linkedin:
+  title: "VM stuck in BUILD? Look at the network before you look at Nova."
+  caption: |
+    An instance sits in BUILD / spawning for five minutes, then goes to ERROR.
+
+    The reflex is to blame Nova. But scheduling already succeeded: a host was selected and Placement holds the allocation. nova-compute is waiting for one event from Neutron, network-vif-plugged, and it never arrives.
+
+    Three read-only checks tell you where it stopped:
+    → the fault and the selected host
+    → the port: binding_failed, or bound but DOWN?
+    → the networking agent on that host
+
+    Deleting and recreating will not help while the agent on the host is not wiring ports.
+
+    The lesson: a networking problem wearing a compute symptom.
+  hashtags: [OpenStack, Nova, Neutron, CloudOperations, SRE, OzarLand]

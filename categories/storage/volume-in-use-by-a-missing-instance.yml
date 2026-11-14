@@ -1,0 +1,78 @@
+id: PG-14
+category: storage
+title: In-use by a VM that is gone?
+situation: >-
+  The instance was deleted or evacuated, but its volume stays `in-use`: it can be neither deleted nor
+  attached elsewhere. The data is intact. The risk is in the fix.
+
+diagram:
+  type: branches
+  head: [What you find, The attachment is]
+  split: 56
+  rows:
+    - see: The instance is gone from Nova, and no domain on its last host uses the volume
+      means: Stale
+      sub: Left by the deletion
+      tone: warn
+    - see: "The attachment ID is the one `server volume list` shows"
+      means: In use. Keep it
+      sub: A running instance depends on it
+      tone: ok
+    - see: The instance runs on host B, this attachment's connector names host A
+      means: Stale
+      sub: Left by the evacuation
+      tone: warn
+  note: >-
+    Seen with python-openstackclient 9.0.0: `volume attachment list --volume-id` ignored its filter. Check the
+    Volume ID column.
+
+checks:
+  - label: Every attachment of the volume
+    hint: cinder attachment-list --all-tenants 1 --volume-id <volume>
+  - label: Does the instance still exist?
+    hint: openstack server show <server> -c status -c OS-EXT-SRV-ATTR:host
+  - label: Which attachment Nova uses
+    hint: openstack server volume list <server>
+  - label: Is the volume open on a host?
+    hint: virsh domblklist <instance-name> (on each host named)
+
+caution:
+  - level: state-changing
+    text: >-
+      Delete only an attachment Nova does not use. Compare its ID with `server volume list` before you
+      delete anything.
+  - level: destructive
+    text: >-
+      `volume set --state available --detached` checks nothing. If a hypervisor still has the volume open,
+      it gets two writers.
+
+lesson: A record is stale only when the hypervisor agrees. Check the host before the database.
+
+runbook:
+  path: volumes/stale-volume-attachment-after-instance-deleted-or-evacuated.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from the 2026.1 documentation and partly observed on an all-in-one lab; the evacuation case needs
+  two computes and was not run. Applies to volumes that are not multi-attach. Attachment records need volume
+  API 3.27 or later, the attachment ID in server volume list needs compute API 2.89 or later. With
+  python-openstackclient 9.0.0, "openstack volume attachment list --volume-id" ignored its filter and listed
+  every attachment of the cloud: check the Volume ID column.
+
+linkedin:
+  title: "A volume still in-use for an instance that no longer exists"
+  caption: |
+    The instance was deleted, or evacuated. Its volume is still "in-use", attached to something that is gone. It cannot be deleted. It cannot be attached anywhere else.
+
+    The data is intact. The risk is entirely in the fix.
+
+    An attachment record is stale only if the hypervisor agrees:
+    → instance gone from Nova, no domain on its last host uses the volume: stale, left by the deletion
+    → the attachment ID is the one Nova's server volume list shows: in use, keep it
+    → the instance runs on host B, the connector names host A: stale, left by the evacuation
+
+    Forcing the volume back to "available" checks none of this. If a hypervisor still has it open, the next attach creates a second writer.
+
+    Check the host before you touch the database.
+  hashtags: [OpenStack, Cinder, Storage, DataIntegrity, CloudOperations, OzarLand]

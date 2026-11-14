@@ -1,0 +1,84 @@
+id: PG-11
+category: networking
+title: Reachable inside, not outside?
+situation: >-
+  The instance has its address and its metadata, and a neighbour in the tenant network reaches it. From
+  outside the cloud: a timeout, not a refusal.
+
+diagram:
+  type: chain
+  caption: Walk the path from the outside in
+  nodes:
+    - step: "1"
+      label: Security group
+      sub: An ingress rule for this protocol, port and source?
+      icon: shield
+      tone: ink
+    - step: "2"
+      label: Floating IP
+      sub: On this port, and this fixed address?
+      icon: map-pin
+      tone: ink
+    - step: "3"
+      label: Router
+      sub: Interface on the subnet, external gateway?
+      icon: route
+      tone: ink
+    - step: "4"
+      label: Guest
+      sub: Host firewall, service listening?
+      icon: monitor
+      tone: ink
+  note: >-
+    Most cases end at 1 or 2. If every floating IP stops answering at once, the cause is shared: the gateway
+    node or the external network.
+
+checks:
+  - label: Port and its security groups
+    hint: openstack port show <port> -c security_group_ids
+  - label: Ingress rules of each group
+    hint: openstack security group rule list --ingress <group>
+  - label: A floating IP on this port?
+    hint: openstack floating ip list --port <port>
+  - label: Router gateway and interfaces
+    hint: openstack router show <router> -c external_gateway_info
+
+caution:
+  - level: know
+    text: >-
+      A rule whose remote is a security group admits only members of that group. Neighbours get in, the
+      outside does not.
+  - level: state-changing
+    text: >-
+      A new rule opens every port that uses the group. Use the narrowest source prefix that works.
+
+lesson: Each check rules out one cause. Go through them in order, from the outside in.
+
+runbook:
+  path: networking/instance-unreachable-from-outside.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - networking/router-stuck-on-dead-l3-agent.md
+
+scope: >-
+  Written from the Neutron 2026.1 documentation and lab-verified on ML2/OVS with the L3 agent and a legacy
+  router, for the security group and floating IP causes. The OVN steps, the router missing on its node, the
+  guest and the external network causes were not run on a lab. DVR, BGP-announced floating IPs and IPv6
+  without NAT are not covered.
+
+linkedin:
+  title: "Reachable from inside, not from outside: walk the path in order"
+  caption: |
+    The instance got its address and its metadata. A neighbour in the same network reaches it. From outside: timeout.
+
+    This is rarely a mystery. It is four records to check, from the outside in:
+    1. Security group: is there an ingress rule for this protocol, port and source?
+    2. Floating IP: is it on this port, and on this fixed address?
+    3. Router: an interface on the subnet, and an external gateway?
+    4. The guest: its own firewall, a service actually listening?
+
+    Most cases end at 1 or 2.
+
+    One classic trap: an ingress rule whose remote is a security group, not a prefix. It admits members of that group only. That is exactly why the neighbour gets in and the outside does not.
+  hashtags: [OpenStack, Neutron, Networking, SecurityGroups, CloudOperations, OzarLand]

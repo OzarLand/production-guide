@@ -1,0 +1,86 @@
+id: PG-19
+category: production-operations
+title: A build failed. Which service?
+situation: >-
+  A failed VM creation says what the user experienced, not which service caused it. One request id,
+  followed through the logs in path order, replaces guessing by timestamp.
+
+diagram:
+  type: chain
+  caption: What one VM creation traverses
+  nodes:
+    - label: Keystone
+      sub: Token
+      icon: key-round
+      tone: ink
+    - label: nova-api
+      sub: Request recorded
+      icon: cloud
+      tone: ink
+    - label: Conductor
+      sub: Scheduler, Placement, cell mapping
+      icon: list-checks
+      tone: ink
+    - label: nova-compute
+      sub: Selected host
+      icon: server
+      tone: ink
+    - label: Then calls
+      sub: Glance, Neutron, libvirt
+      icon: layers
+      tone: ink
+  note: >-
+    Neutron and Placement log Nova's request id next to their own, so one grep finds their lines too.
+
+checks:
+  - label: Get the request id
+    hint: openstack server event list <server-id>
+  - label: Grep it, in path order
+    hint: "nova-api, conductor, scheduler, placement, neutron-server"
+  - label: Then on the selected compute
+    hint: grep <request-id> nova-compute.log
+  - label: Compare with a build that worked
+    hint: "same host? same network? same image?"
+
+caution:
+  - level: avoid
+    text: >-
+      Reaching for the familiar fix. Applied to a different failure mode, it adds risk. Separate facts,
+      hypotheses and assumptions.
+  - level: know
+    text: >-
+      Silence is not absence. On a lab, Glance logged no line for a successful call at the default log
+      level.
+
+lesson: The last service that logged the request id is where it stopped. Start there.
+
+runbook:
+  path: diagnostics/what-a-vm-creation-traverses-and-tracing-by-request-id.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - logs/tracing-one-request-across-services-and-hosts.md
+
+scope: >-
+  The provisioning path is common to current releases; the tracing steps were lab-verified on OpenStack
+  2026.1 with Kolla-Ansible. The server events can be thin after a rescheduled build: the cause is then only
+  in the logs. With agent-based networking neutron-server talks to its agents over RabbitMQ; OVN uses its own
+  databases. The first error after the point where the request stopped can itself be the symptom of a
+  dependency failing underneath (bus, database).
+
+linkedin:
+  title: "A VM creation failed. Follow one request id, not the timestamps."
+  caption: |
+    A failed VM creation tells you what the user experienced. It does not tell you which service caused it.
+
+    A scheduling problem looks like a Nova problem. A network timeout looks like a Neutron problem. The architecture makes each one plausible without making any of them true.
+
+    One build traverses Keystone, nova-api, the conductor and scheduler with Placement, nova-compute on the selected host, then Glance, Neutron and libvirt. Every API request carries a request id that the services propagate in their logs.
+
+    So:
+    1. get the request id from the server's events
+    2. grep it through the services, in path order
+    3. the last service that logged it is where the request stopped
+
+    Then compare with a request that succeeded. Same host? Same network? Same image? The difference is the lead.
+  hashtags: [OpenStack, Troubleshooting, Observability, IncidentResponse, SRE, OzarLand]

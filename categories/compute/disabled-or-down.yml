@@ -1,0 +1,74 @@
+id: PG-08
+category: compute
+title: Disabled or down? Two fields
+situation: >-
+  `openstack compute service list` gives each `nova-compute` two independent fields. Each one is set,
+  cleared and interpreted differently.
+
+diagram:
+  type: compare
+  caption: Two fields, two questions
+  columns:
+    - kicker: "Status: enabled / disabled"
+      title: May the scheduler place instances here?
+      tone: ink
+      points:
+        - Set by an operator, or by the libvirt driver (reason `AUTO:`)
+        - Instances already there are not affected
+      verdict: A scheduling decision
+    - kicker: "State: up / down"
+      title: Does Nova believe the service is alive?
+      tone: warn
+      points:
+        - From the heartbeat, or forced by an operator
+        - "Once down: deletes become local, evacuate is allowed"
+      verdict: A liveness belief
+  note: No state stops a running instance. The danger is in what Nova allows once a service is down.
+
+checks:
+  - label: Both fields, reason, forced down
+    hint: openstack compute service list --host <host> --long
+  - label: Who disabled it?
+    hint: "reason AUTO: = libvirt connection lost, it re-enables itself"
+  - label: Is nova-compute alive on the host?
+    hint: unit or container status, end of nova-compute.log
+  - label: Evacuations that left this host
+    hint: openstack server migration list --host <host> --type evacuation
+
+caution:
+  - level: destructive
+    text: >-
+      Never force down a compute that is not fenced. Nova then allows local deletes and evacuations of
+      instances that are alive.
+  - level: state-changing
+    text: >-
+      `--enable` makes the host schedulable at once. Read the reason first, and ask whoever set it.
+
+lesson: Disabled is a scheduling decision. Down is a belief about liveness.
+
+runbook:
+  path: scheduling/compute-service-disabled-or-forced-down.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from the Nova 2026.1 source and reproduced on a Kolla-Ansible lab (ML2/OVS, no Cinder). The Forced
+  Down column needs compute API microversion 2.11 or later. Nova refuses to set a service back up while
+  evacuation records from that host are still "done": nova-compute must be restarted there first, which
+  destroys the local copies of the evacuated instances. Ironic is not covered.
+
+linkedin:
+  title: "Compute service: disabled and down are two different things"
+  caption: |
+    openstack compute service list shows two fields for every nova-compute. They are independent, and mixing them up is how instances get lost.
+
+    Status (enabled / disabled) answers: may the scheduler place new instances here?
+    It is a scheduling decision. Running instances are not affected.
+
+    State (up / down) answers: does Nova believe the service is alive?
+    It comes from the heartbeat, or from an operator who forced it down.
+
+    The danger is in what Nova allows once a service is down: deleting an instance becomes a local delete (the guest is not touched), and evacuation is allowed.
+
+    So never force down a compute that is not fenced. And before you re-enable one, read the disable reason: a reason starting with "AUTO:" was set by the libvirt driver and clears itself.
+  hashtags: [OpenStack, Nova, CloudOperations, SRE, InfrastructureEngineering, OzarLand]

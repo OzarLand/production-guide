@@ -1,0 +1,80 @@
+id: PG-20
+category: production-operations
+title: Cleaning up stale records?
+situation: >-
+  Every host failure and interrupted operation leaves records that describe nothing real: instances stuck
+  for days, orphan ports, phantom allocations. They hold quota and distort capacity.
+
+diagram:
+  type: chain
+  caption: Climb only as high as you must
+  nodes:
+    - step: "1"
+      label: Read-only audit
+      sub: Lists and placement audit. Is the record true?
+      tone: ok
+    - step: "2"
+      label: The API
+      sub: Reset the state, then delete through the API
+      tone: warn
+    - step: "3"
+      label: "*-manage tools"
+      sub: Heal allocations, with a dry run first
+      tone: warn
+    - step: "4"
+      label: The database
+      sub: "Last resort: backup, one row at a time"
+      tone: stop
+  note: >-
+    `nova-manage placement audit` is read-only as long as you do not pass `--delete`.
+
+checks:
+  - label: Instances stuck in a transition
+    hint: openstack server list --all-projects --long
+  - label: Allocations without an instance
+    hint: nova-manage placement audit --verbose
+  - label: Ports whose device is gone
+    hint: openstack port show <port> -c device_id
+  - label: Volumes on a missing instance
+    hint: openstack volume list --all-projects --status in-use
+
+caution:
+  - level: state-changing
+    text: >-
+      `reset-state` only changes Nova's record, not the hypervisor. `--state active` on a dead domain gives
+      users a false picture.
+  - level: destructive
+    text: >-
+      Direct database edits bypass every consistency check the services perform. Full backup, exact row by
+      UUID, one record at a time.
+
+lesson: "Project tools first, the database last. And first of all: is this record true?"
+
+runbook:
+  path: lifecycle/stale-records-stuck-instances-orphan-ports-attachments.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - scheduling/placement-allocations-out-of-sync-audit-and-heal.md
+
+scope: >-
+  Lab-verified on OpenStack 2026.1 with Kolla-Ansible; the volume steps were not run on that lab (no Cinder).
+  "nova-manage placement audit" is read-only without --delete. Archiving and purging soft-deleted rows is a
+  destructive step of its own, with retention requirements to check first. Command behaviour changed across
+  python-openstackclient versions (10.5.0 asks for confirmation before "server set --state").
+
+linkedin:
+  title: "Stale records: project tools first, the database last"
+  caption: |
+    A long-lived platform accumulates records that describe nothing real. Instances in BUILD for days. Ports whose instance is gone. Volumes attached to nothing. Placement allocations for consumers that no longer exist.
+
+    No direct outage, which is why it is neglected. But they hold quota, distort capacity, and make every investigation start with the same question: is this record true?
+
+    The clean-up is a ladder. Climb only as high as you must:
+    1. Read-only audit
+    2. The API: reset the state, then delete through the API
+    3. The *-manage tools, with --dry-run first
+    4. The database: last resort, with a backup, one row at a time
+
+    A direct database edit bypasses every consistency check the services perform. It is rarely the shortest path it appears to be.
+  hashtags: [OpenStack, Nova, Placement, OperationalExcellence, CloudOperations, OzarLand]

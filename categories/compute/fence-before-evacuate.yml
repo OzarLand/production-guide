@@ -1,0 +1,81 @@
+id: PG-07
+category: compute
+title: Fence before you evacuate
+situation: >-
+  A compute is unreachable and users report their instances down. Nova still shows them `ACTIVE`: it cannot
+  know whether the host is dead or only cut off from the control plane.
+
+diagram:
+  type: chain
+  caption: The order that makes evacuation safe
+  nodes:
+    - step: "1"
+      label: Confirm out of band
+      sub: BMC power state, switch port, storage clients
+      tone: ok
+    - step: "2"
+      label: Fence
+      sub: Power the host off, or isolate every port
+      tone: stop
+    - step: "3"
+      label: Disable the service
+      sub: Then force it down, only now
+      tone: warn
+    - step: "4"
+      label: Evacuate
+      sub: Rebuilds each instance on another host
+      tone: stop
+  note: >-
+    Local ephemeral disks are rebuilt from the image: their content is lost. From microversion 2.95 an
+    evacuated instance stays stopped.
+
+checks:
+  - label: Nova's view of the host
+    hint: openstack compute service list --host <host> --long
+  - label: Instances and volumes involved
+    hint: openstack server list --all-projects --host <host> --long
+  - label: Does the host answer at all?
+    hint: "ssh <host> uptime (if it answers, it is NOT dead: stop)"
+  - label: Out-of-band power state
+    hint: "BMC, iDRAC, iLO: the authoritative source"
+
+caution:
+  - level: destructive
+    text: >-
+      Evacuating a host that still runs its instances gives each volume two writers. The recovery is then
+      worse than the outage.
+  - level: know
+    text: >-
+      Automation that evacuates on a lost heartbeat must fence first, or it will one day destroy the workload
+      it was meant to save.
+
+lesson: The precondition for evacuation is fencing, not a missing heartbeat.
+
+runbook:
+  path: recovery/compute-host-failure-fence-before-evacuate.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Derived from a real incident and lab-verified on OpenStack 2026.1 (Kolla-Ansible, ML2/OVS, local disks and
+  Cinder LVM). Fencing through IPMI or the switch, the Ceph blocklist and evacuation with shared instance
+  storage were not run on the lab. Evacuation semantics for local storage and the behaviour of a returning
+  host should be checked against the Nova documentation of your release. Assumes the libvirt driver.
+
+linkedin:
+  title: "Fence before you evacuate. Always."
+  caption: |
+    A compute host stops answering. The instances on it are down. The pressure to run "server evacuate" is immediate.
+
+    But Nova cannot tell a dead host from an unreachable one. If the host is only cut off from the control plane, its instances may still be running, and still writing. Evacuate now and each volume gets two writers.
+
+    The order that makes it safe:
+    1. Confirm out of band (BMC, switch port, storage side)
+    2. Fence: power off, or isolate every port
+    3. Disable the service, force it down only now
+    4. Evacuate
+
+    The same goes for auto-evacuation tooling: if it reacts to a lost heartbeat without fencing, it will one day destroy the workload it was meant to save.
+
+    The precondition for evacuation is fencing, not a missing heartbeat.
+  hashtags: [OpenStack, Nova, HighAvailability, DisasterRecovery, CloudOperations, OzarLand]

@@ -1,0 +1,76 @@
+id: PG-03
+category: vm-lifecycle
+title: Exceeded maximum number of retries?
+situation: >-
+  A new instance goes to `ERROR`, often after a longer wait. The scheduler **did** find computes: each one
+  tried to build the instance, and each one failed.
+
+diagram:
+  type: chain
+  caption: How a build is retried
+  nodes:
+    - label: Scheduler
+      sub: Picks a host and a list of alternates
+      icon: list-checks
+      tone: ok
+    - label: Compute A
+      sub: Spawn fails. The error is in its log
+      icon: server
+      tone: stop
+    - label: Compute B
+      sub: Next alternate. Often the same error
+      icon: server
+      tone: stop
+    - label: No alternate left
+      sub: "`ERROR`: the fault only says so"
+      icon: octagon-x
+      tone: mute
+  note: >-
+    Attempts are bounded by `[scheduler] max_attempts`: 3 by default in Nova, 10 as written by Kolla-Ansible
+    2026.1.
+
+checks:
+  - label: Which computes tried
+    hint: openstack server event list <server-id>
+  - label: The real exception, on each one
+    hint: grep <server-id> nova-compute.log
+  - label: Same error on every compute?
+    hint: then look for a shared dependency, or a request no host can serve
+  - label: Computes and agents up?
+    hint: openstack compute service list ; openstack network agent list
+
+caution:
+  - level: avoid
+    text: >-
+      Debugging the fault message. It only says there were no more computes to try: it is a summary, not a
+      cause.
+  - level: know
+    text: >-
+      Nova does not retry a build that ended in `ERROR`. Fix what the computes reported, then build again.
+
+lesson: The fault is a summary. The cause is in the log of each compute that tried.
+
+runbook:
+  path: scheduling/build-fails-exceeded-maximum-number-of-retries.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from the Nova 2026.1 source and lab-verified with two computes. Not every failure is retried: a
+  network allocation failure or a boot-from-volume block device failure aborts the build on the first compute
+  with another fault. Retries of resize and cold migration, and Ironic, are not covered.
+
+linkedin:
+  title: "\"Exceeded maximum number of retries\" tells you nothing. The computes do."
+  caption: |
+    "Exceeded maximum number of retries. Exhausted all hosts available for retrying build failures."
+
+    This fault is not a scheduling failure. The scheduler found hosts. Each one tried to spawn the instance, failed, and Nova moved on to the next alternate until none was left.
+
+    So the message is a summary. The cause is the exception each compute logged, and it is usually the same on all of them:
+    → one broken compute: builds succeed elsewhere, just slower
+    → a shared dependency: every attempt fails the same way
+    → a request no host can satisfy at spawn time
+
+    Start with `openstack server event list`, then read nova-compute.log on each host that tried.
+  hashtags: [OpenStack, Nova, Troubleshooting, CloudOperations, SRE, OzarLand]

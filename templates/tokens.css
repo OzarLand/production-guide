@@ -1,0 +1,58 @@
+/* OzarLand Production Guide: design tokens.
+ * The single place where colours, type and spacing are defined. See DESIGN.md.
+ * Colour carries one meaning only: operational risk. Everything else is ink on paper. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+}
+
+:root {
+  /* Canvas: LinkedIn portrait */
+  --canvas-w: 1080px;
+  --canvas-h: 1350px;
+  --pad: 52px;
+
+  /* Ink on paper */
+  --paper: #f4f1ea;
+  --card: #ffffff;
+  --ink: #0e1a2b;
+  --ink-2: #435268;
+  --ink-3: #76839a;
+  --line: #d8d3c6;
+
+  /* Risk semantics: same values as the OzarLand status colours */
+  --ok: #15803d;
+  --ok-bg: #dcfce7;
+  --ok-line: #16a34a;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --warn-line: #d97706;
+  --stop: #b91c1c;
+  --stop-bg: #fee2e2;
+  --stop-line: #dc2626;
+  --mute: #4b5563;
+  --mute-bg: #f3f4f6;
+  --mute-line: #9ca3af;
+
+  /* Type */
+  --sans: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --fs-title: 72px;
+  --fs-lesson: 37px;
+  --fs-situation: 26px;
+  --fs-body: 24px;      /* check labels, cautions */
+  --fs-diagram: 22px;   /* diagram labels */
+  --fs-small: 20px;     /* diagram sub-labels, hints: the floor for content */
+  --fs-label: 18px;     /* section labels and footer: the floor for chrome */
+
+  --radius: 16px;
+}

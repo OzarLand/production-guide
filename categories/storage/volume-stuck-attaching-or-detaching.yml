@@ -1,0 +1,92 @@
+id: PG-13
+category: storage
+title: Volume stuck attaching or detaching?
+situation: >-
+  Minutes later the volume is still `attaching`, `reserved` or `detaching`, and retrying is refused. Its
+  data is safe as long as nothing forces its state.
+
+diagram:
+  type: compare
+  caption: Four views of one attachment. Compare them
+  columns:
+    - kicker: Cinder
+      title: Volume status
+      icon: database
+      tone: mute
+      points:
+        - What the user sees
+      verdict: A record
+    - kicker: Cinder
+      title: Attachment records
+      icon: database
+      tone: mute
+      points:
+        - One per attach, with its own status
+      verdict: A record
+    - kicker: Nova
+      title: Server volume list
+      icon: cloud
+      tone: mute
+      points:
+        - What Nova believes is attached
+      verdict: A record
+    - kicker: Hypervisor
+      title: "`virsh domblklist`"
+      icon: hard-drive
+      tone: ok
+      points:
+        - Is it a disk of the instance, or not?
+      verdict: Reality
+  note: >-
+    The fix depends on which views disagree. An attach that Nova is still retrying is not stuck yet.
+
+checks:
+  - label: "Cinder: status and attachments"
+    hint: openstack volume show <volume> -c status -c attachments
+  - label: "Nova: what it thinks is attached"
+    hint: openstack server volume list <server>
+  - label: The last attach or detach action
+    hint: openstack server event list <server>
+  - label: "Hypervisor: is it really a disk?"
+    hint: virsh domblklist <instance-name>
+
+caution:
+  - level: destructive
+    text: >-
+      `openstack volume set --state` only rewrites Cinder's record. If a hypervisor still has the volume,
+      the next attach gives it two writers.
+  - level: state-changing
+    text: >-
+      Restarting `cinder-volume` or `nova-compute` interrupts the other operations in progress on that
+      service.
+
+lesson: The hypervisor tells the truth about the instance. Trust it over both databases.
+
+runbook:
+  path: volumes/volume-stuck-in-attaching-or-detaching.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from the 2026.1 documentation and lab-verified on an all-in-one lab with LVM over iSCSI. A compute
+  that cannot connect to the storage, other backends (RBD, multipath) and a multinode platform were not
+  observed. Attachment records need volume API 3.27 or later; the attachment ID in server volume list needs
+  compute API 2.89 or later. Does not cover multi-attach volumes.
+
+linkedin:
+  title: "Volume stuck in attaching or detaching: four views, one truth"
+  caption: |
+    A volume sits in "attaching" or "detaching" and every retry is refused. The tempting fix is one command: reset its state.
+
+    That command only rewrites Cinder's database record. It checks nothing. If a hypervisor still has the volume open, the next attach gives it a second writer, and two writers corrupt a filesystem.
+
+    Before any fix, compare four views of the same attachment:
+    → Cinder: the volume status
+    → Cinder: the attachment records
+    → Nova: the server's volume list
+    → the hypervisor: virsh domblklist
+
+    Three of them are database records. One is reality. The fix depends on which ones disagree.
+
+    The data is safe as long as nothing forces the state.
+  hashtags: [OpenStack, Cinder, Nova, Storage, CloudOperations, OzarLand]

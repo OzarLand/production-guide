@@ -1,0 +1,80 @@
+id: PG-10
+category: networking
+title: ACTIVE, but no IP address?
+situation: >-
+  A new instance is `ACTIVE`, no fault, yet unreachable. Instances created earlier work fine. Its DHCP
+  request got no answer.
+
+diagram:
+  type: chain
+  caption: Nova did its job. The failure comes after
+  nodes:
+    - label: Nova
+      sub: "Instance `ACTIVE`, power state running"
+      icon: cloud
+      tone: ok
+    - label: Guest boots
+      sub: Asks for a lease, again and again
+      icon: monitor
+      tone: warn
+      badge: clock
+    - label: dnsmasq
+      sub: Does not know the new port
+      icon: network
+      tone: mute
+    - label: DHCP agent
+      sub: Not alive, so the port was never added
+      icon: server
+      tone: stop
+  links: [ok, broken, broken back]
+  note: >-
+    Running instances keep their lease (`dhcp_lease_duration`, 86400 s by default). The console log is the
+    only place the failure shows.
+
+checks:
+  - label: No fault in Nova
+    hint: openstack server show <id> -c status -c fault -c addresses
+  - label: "Console: DHCP asked, no answer"
+    hint: openstack console log show <id> | grep -iE 'dhcp|lease'
+  - label: Is any DHCP agent alive?
+    hint: openstack network agent list --agent-type dhcp
+  - label: Agents serving that network
+    hint: openstack network agent list --network <network>
+
+caution:
+  - level: know
+    text: >-
+      A `qdhcp-` namespace with dnsmasq still running is not proof of health. Check that the agent itself is
+      alive.
+  - level: state-changing
+    text: >-
+      Instances created during the outage may need a reboot to get a lease. Tell their owner first.
+
+lesson: ACTIVE means Nova did its job. It says nothing about the network of the guest.
+
+runbook:
+  path: networking/new-instance-gets-no-ip-dhcp-agents-down.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Applies to ML2/OVS with DHCP agents. Lab-verified on OpenStack 2026.1 with Kolla-Ansible for the case where
+  every DHCP agent is down; a single network without a live agent and a missing dnsmasq were not reproduced.
+  With OVN, DHCP is answered locally by ovn-controller and this memo does not apply. Starting the agents again
+  can move networks to another DHCP agent (observed on a lab, without traffic loss).
+
+linkedin:
+  title: "ACTIVE, no fault, no IP address: Nova did its job"
+  caption: |
+    A new instance is ACTIVE. No fault. Nothing in the Nova logs. And nobody can reach it.
+
+    Instances created yesterday are fine, which makes it look like a problem with this one VM. It is not.
+
+    With ML2/OVS, a new port must be added to dnsmasq by a DHCP agent. If no agent is alive, the guest asks for a lease and never gets an answer. Running instances keep theirs (24 hours by default), so the outage is invisible until someone creates an instance.
+
+    Where to look:
+    → the console log of the guest: DHCP asked, never answered
+    → openstack network agent list --agent-type dhcp
+
+    ACTIVE means Nova did its job. It says nothing about the network of the guest.
+  hashtags: [OpenStack, Neutron, Networking, CloudOperations, SRE, OzarLand]

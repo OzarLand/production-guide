@@ -1,0 +1,39 @@
+name: check
+
+# Validates every memo (structure, length budgets, runbook references), renders the collection to prove that
+# every memo fits its canvas, and fails if the generated pages are not up to date with their sources.
+# It checks form and links, not technical accuracy: that is the reviewer's job.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # The organization requires actions pinned to a full commit SHA.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: production-guide
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: OzarLand/openstack-vm-runbooks
+          path: openstack-vm-runbooks
+          persist-credentials: false
+      - name: Install dependencies and the browser used for rendering
+        working-directory: production-guide
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Validate, check runbook references, render
+        working-directory: production-guide
+        run: node scripts/build.cjs --runbooks ../openstack-vm-runbooks
+      - name: Generated pages are up to date
+        working-directory: production-guide
+        run: git diff --exit-code -- README.md LINKEDIN.md categories

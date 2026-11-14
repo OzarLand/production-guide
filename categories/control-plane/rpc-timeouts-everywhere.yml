@@ -1,0 +1,80 @@
+id: PG-16
+category: control-plane
+title: MessagingTimeout everywhere?
+situation: >-
+  Several services log RPC timeouts at once. Builds stay in `BUILD`, computes show `down` while
+  `nova-compute` runs, Neutron agents flap.
+
+diagram:
+  type: branches
+  head: [RabbitMQ shows, The case is]
+  split: 46
+  rows:
+    - see: One node missing, the others agree
+      means: A node is down
+      sub: Start it. It rejoins the cluster
+      tone: warn
+    - see: Nodes disagree, or list a partition
+      means: A network partition
+      sub: Repair the network, let it heal
+      tone: stop
+    - see: A memory or disk alarm
+      means: Publishers are blocked
+      sub: One alarm blocks the whole cluster
+      tone: stop
+    - see: RPC queues growing, with 0 consumers
+      means: A consumer is gone
+      sub: The bus is fine. Fix that service
+      tone: warn
+
+checks:
+  - label: Nodes, partitions, alarms
+    hint: rabbitmq-diagnostics cluster_status (on every node)
+  - label: Local resource alarms
+    hint: rabbitmq-diagnostics check_local_alarms
+  - label: Backlog without a consumer
+    hint: rabbitmqctl list_queues name messages consumers
+  - label: Khepri or Mnesia?
+    hint: rabbitmqctl list_feature_flags name state | grep khepri
+
+caution:
+  - level: destructive
+    text: >-
+      Resetting RabbitMQ deletes every queue and message. Requests in flight are lost. Last resort, once
+      the four cases are ruled out.
+  - level: know
+    text: >-
+      With Khepri (RabbitMQ 4.2), Kolla-Ansible's `rabbitmq-reset-state` failed on a lab. Prove it on your
+      release first.
+
+lesson: Computes reported down are a symptom here. Read every RabbitMQ node before you reset anything.
+
+runbook:
+  path: recovery/rabbitmq-partition-or-alarm-rpc-timeouts.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from Kolla-Ansible 2026.1 and the RabbitMQ 4.2 guides, lab-verified with three controllers, quorum
+  queues and Khepri. On that lab a partition healed by itself once the network was back; the manual partition
+  recovery and a disk alarm were not run. What a partition does depends on the metadata store (Khepri or
+  Mnesia) and on the queue types of your deployment. Requests sent during the incident can leave resources
+  in transitional states.
+
+linkedin:
+  title: "MessagingTimeout in every service: diagnose the bus before the services"
+  caption: |
+    MessagingTimeout in Nova. In Neutron. In Cinder. Computes reported down although nova-compute is running. Agents flapping.
+
+    When every service shows the same symptom at once, the services are rarely the cause. Look at what they share: the message bus.
+
+    On every RabbitMQ node, read-only:
+    → one node missing, the others agree: a node is down
+    → nodes disagree, or partitions listed: a network partition
+    → a memory or disk alarm: publishers are blocked, cluster-wide
+    → RPC queues growing with 0 consumers: the bus is fine, a service is gone
+
+    Four cases, four different responses. And one thing to keep for last: resetting RabbitMQ deletes every queue and every message.
+
+    Running instances keep running through all of this.
+  hashtags: [OpenStack, RabbitMQ, ControlPlane, IncidentResponse, CloudOperations, OzarLand]

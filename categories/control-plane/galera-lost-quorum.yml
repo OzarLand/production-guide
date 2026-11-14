@@ -1,0 +1,78 @@
+id: PG-17
+category: control-plane
+title: APIs fail on database errors?
+situation: >-
+  APIs answer 500 or 503, or hang, and logs say `WSREP has not yet prepared node`. Galera accepts writes
+  only where a majority of nodes agree.
+
+diagram:
+  type: branches
+  head: [The MariaDB nodes show, The case is]
+  split: 50
+  rows:
+    - see: "All `Primary`, `Synced`, same cluster size"
+      means: Healthy
+      sub: Look at other shared dependencies
+      tone: ok
+    - see: "One node `non-Primary` or stopped"
+      means: Quorum kept
+      sub: Fix that node, it rejoins
+      tone: warn
+    - see: "Every running node `non-Primary`"
+      means: Quorum lost
+      sub: Restore connectivity first
+      tone: stop
+    - see: No node running
+      means: Full stop
+      sub: Recover from the most advanced node
+      tone: stop
+
+checks:
+  - label: Is MariaDB up on each node?
+    hint: container or service status, on every node
+  - label: Each node's view of the cluster
+    hint: "SHOW STATUS LIKE 'wsrep_cluster_status' (and _size)"
+  - label: How far each node got
+    hint: "SHOW STATUS LIKE 'wsrep_last_committed'"
+  - label: The end of the MariaDB log
+    hint: why the node left, or why it does not start
+
+caution:
+  - level: destructive
+    text: >-
+      Bootstrapping from a node that is not the most advanced discards the transactions only the other nodes
+      had. It cannot be undone.
+  - level: destructive
+    text: >-
+      A quorum reset declares one node the reference. On both sides of a split, it creates two clusters with
+      different data.
+
+lesson: The data is at risk only during the recovery. Compare every node before choosing one.
+
+runbook:
+  path: recovery/galera-cluster-lost-quorum-database-unavailable.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Written from Kolla-Ansible 2026.1 and the Galera crash recovery and quorum reset guides; lab-verified on a
+  disposable Kolla-Ansible lab with ProxySQL in front of MariaDB. With ProxySQL the services see its errors
+  ("Max connect timeout reached") instead of the WSREP message. Running instances keep running. Single-node
+  MariaDB, restoring from a backup and Galera arbitrators are not covered.
+
+linkedin:
+  title: "Galera lost quorum: the data is at risk during the recovery, not before"
+  caption: |
+    Every OpenStack API fails or hangs. The logs say "WSREP has not yet prepared node for application use".
+
+    Galera accepts writes only in a Primary component, a majority of the last known nodes. Lose the majority and the remaining nodes refuse queries. That is a safety mechanism, not the failure.
+
+    Running instances keep running. And the data is not at risk yet. It becomes at risk during the recovery, if the cluster is bootstrapped from a node that is not the most advanced: the transactions only the other nodes had are discarded, for good.
+
+    So before any recovery command, on every node:
+    → is MariaDB running?
+    → wsrep_cluster_status: Primary or non-Primary?
+    → wsrep_last_committed: how far did this node get?
+
+    One node down, quorum lost and full stop are three different cases with three different answers.
+  hashtags: [OpenStack, MariaDB, Galera, ControlPlane, DatabaseReliability, OzarLand]

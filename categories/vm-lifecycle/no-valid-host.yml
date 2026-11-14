@@ -1,0 +1,75 @@
+id: PG-02
+category: vm-lifecycle
+title: No valid host, with free capacity?
+situation: >-
+  Builds end in `ERROR` with no host assigned, while computes have free CPU, memory and disk. The request
+  stopped before any compute was asked.
+
+diagram:
+  type: branches
+  head: [The fault says, The request stopped at]
+  split: 47
+  rows:
+    - see: "No valid host was found. There are not enough hosts available."
+      mono: true
+      means: A scheduler filter
+      sub: "Scheduler log: `Filter <Name> returned 0 hosts`"
+      tone: warn
+    - see: "No valid host was found."
+      mono: true
+      means: Placement, no candidate
+      sub: Inventory, ratios, reserved, or a disabled compute
+      tone: warn
+    - see: "Host '<host>' is not mapped to any cell"
+      mono: true
+      means: The cell mapping
+      sub: The host exists but was never discovered
+      tone: stop
+  note: Message variants as observed on a lab on 2026.1. Running instances are not affected.
+
+checks:
+  - label: Computes up and enabled?
+    hint: openstack compute service list --service nova-compute
+  - label: Every host mapped to a cell?
+    hint: nova-manage cell_v2 list_hosts
+  - label: Placement candidates for the flavor
+    hint: openstack allocation candidate list --resource VCPU=<n> ...
+  - label: What the scheduler logged
+    hint: nova-scheduler.log for the request id of the failed boot
+
+caution:
+  - level: state-changing
+    text: >-
+      Re-enabling a compute puts new instances on it at once. Read its disable reason first: it may still
+      apply.
+  - level: avoid
+    text: >-
+      Changing a ratio directly in Placement. The compute overrides it on its next update: set ratios and
+      reserved values in `nova.conf`.
+
+lesson: "“No valid host” is three different failures. Read the exact message first."
+
+runbook:
+  path: scheduling/no-valid-host-with-free-capacity.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Cells v2 and Placement apply to every current release. Lab-verified on OpenStack 2026.1 (all-in-one,
+  Kolla-Ansible): unmapped host, reserved memory, disabled service and a filter. Stale allocations and missing
+  traits were not reproduced. The allocation candidate commands need the osc-placement plugin. Ironic is not
+  covered.
+
+linkedin:
+  title: "\"No valid host was found\" is not one failure. It is three."
+  caption: |
+    Capacity exists. Hypervisors have free CPU, memory and disk. And every build still ends with "No valid host was found".
+
+    Before opening a capacity ticket, read the exact message. It tells you where the request stopped:
+
+    → "...There are not enough hosts available." A scheduler filter rejected every host. The scheduler log names it.
+    → "No valid host was found." and nothing after: Placement returned no candidate. Look at inventory, allocation ratios, reserved values, disabled computes.
+    → "Host '<host>' is not mapped to any cell": the compute exists but was never mapped. Classic after adding hosts.
+
+    Three causes, three different fixes, one message that looks the same at a glance.
+  hashtags: [OpenStack, Nova, Placement, CloudOperations, SRE, OzarLand]

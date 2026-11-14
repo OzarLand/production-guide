@@ -1,0 +1,86 @@
+id: PG-15
+category: control-plane
+title: "Control plane down: what runs?"
+situation: >-
+  APIs, message bus and databases are unavailable. The data plane does not need them to carry the state it
+  already has.
+
+diagram:
+  type: compare
+  caption: Control plane and data plane fail separately
+  columns:
+    - kicker: Data plane
+      title: Keeps working
+      icon: heart-pulse
+      tone: ok
+      points:
+        - Running instances, disks, traffic
+        - Existing DHCP leases
+        - Rules, floating IPs and routes already programmed
+        - Router failover (L3 HA, OVN)
+    - kicker: Control plane
+      title: Is lost
+      icon: octagon-x
+      tone: stop
+      points:
+        - Create, change, migrate, delete
+        - New state reaching the data plane
+        - Metadata for instances that (re)boot
+        - Consoles, API-based monitoring
+  note: The exact behaviour depends on the networking backend. Verify it on your platform before an incident.
+
+checks:
+  - label: Do instances still answer?
+    hint: ping from a host on the instance network
+  - label: Does a lease still renew?
+    hint: "in a guest: ip -4 addr (valid_lft resets on renewal)"
+  - label: "ML2/OVS: dnsmasq still serving?"
+    hint: pgrep -af dnsmasq | grep <network-id>
+  - label: "L3 HA: who holds the router?"
+    hint: ip netns exec qrouter-<id> ip addr
+
+caution:
+  - level: avoid
+    text: >-
+      Restarting Neutron agents or `ovn-controller` during the outage. They run on the data-plane nodes, and
+      some restarts can interrupt traffic.
+  - level: know
+    text: >-
+      An instance that boots or reboots during the outage may get no metadata: no SSH key, no hostname, no
+      user data.
+
+lesson: A control-plane outage is not a workload outage. Protect what runs, then repair.
+
+runbook:
+  path: diagnostics/control-plane-down-what-still-works-for-instances.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - recovery/reopening-provisioning-after-control-plane-incident.md
+
+scope: >-
+  General behaviour of Nova and Neutron as documented upstream and observed by an operator in a real
+  control-plane incident. The lab confirmation (OpenStack 2026.1, Kolla-Ansible all-in-one) covers ML2/OVS
+  with a non-HA router only: OVN, L3 HA and router failover were not tested. Linux Bridge, SR-IOV and vendor
+  SDN differ. Octavia, Designate and other services with their own data plane are not covered.
+
+linkedin:
+  title: "Control plane down is not the same as workloads down"
+  caption: |
+    The APIs do not answer. The message bus is broken. The database is unavailable. Is production down?
+
+    Not necessarily. The control plane and the data plane fail separately, and the data plane does not need the APIs to carry the state it already has.
+
+    What keeps working:
+    → running instances, their disks, their traffic
+    → existing DHCP leases
+    → security groups, floating IPs and routes already programmed
+
+    What is lost:
+    → create, change, migrate, delete
+    → any new state reaching the data plane
+    → metadata for instances that boot or reboot
+    → consoles, and monitoring that reads the APIs
+
+    This is what makes "protect the running workloads, then repair" a real option. But it depends on your networking backend: verify it on a lab before the incident, and write the result down.
+  hashtags: [OpenStack, ControlPlane, IncidentResponse, CloudOperations, SRE, OzarLand]

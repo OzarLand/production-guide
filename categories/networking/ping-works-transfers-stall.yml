@@ -1,0 +1,77 @@
+id: PG-12
+category: networking
+title: Ping works, big transfers stall?
+situation: >-
+  Instances of one compute answer ping and accept connections, but SSH hangs on a large output and HTTP
+  times out. Agents alive, instances `ACTIVE`, nothing in the logs.
+
+diagram:
+  type: compare
+  caption: Same instance, same path, two packet sizes
+  columns:
+    - kicker: Small packet
+      title: "`ping -M do -s 56`"
+      tone: ok
+      points:
+        - Still fits the tunnel once encapsulated
+        - Monitoring stays green
+      verdict: Answered
+    - kicker: Largest packet of the network
+      title: "`ping -M do -s <MTU - 28>`"
+      tone: stop
+      points:
+        - Too big for the tunnel interface of that compute
+        - Dropped without any error
+      verdict: 100% loss
+  note: >-
+    The tunnel interface MTU must be at least the network MTU plus 50 bytes (VXLAN over IPv4; 70 over
+    IPv6).
+
+checks:
+  - label: MTU Neutron gives the network
+    hint: openstack network show <network> -c mtu
+  - label: Don't-fragment ping, two sizes
+    hint: "from the router namespace: ping -M do -s <mtu-28> <ip>"
+  - label: Tunnel interface MTU, per compute
+    hint: ip link show <tunnel-interface>
+  - label: The underlay between hosts
+    hint: the same ping between the tunnel addresses of two hosts
+
+caution:
+  - level: state-changing
+    text: >-
+      Changing the MTU of an interface that also carries management traffic can cut it. Use the out-of-band
+      console if in doubt.
+  - level: state-changing
+    text: >-
+      Lowering `global_physnet_mtu` changes every tenant network. Instances pick it up only at their next
+      DHCP renewal or reboot.
+
+lesson: A green ping proves small packets pass. Test the largest one the network promises.
+
+runbook:
+  path: networking/tunnel-mtu-mismatch-large-packets-dropped.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS, VXLAN over an IPv4 underlay, for a tunnel
+  interface whose MTU was lowered on one compute. A switch on the path dropping large frames, a platform-wide
+  mismatch and an IPv6 underlay were not reproduced. Neutron never re-reads the MTU of the hosts after
+  deployment. OVN was not tested.
+
+linkedin:
+  title: "Ping works, large transfers stall: test the largest packet"
+  caption: |
+    Users say the service is "slow" or "hangs". Ping answers. SSH logs in, then freezes on a large output. Agents are alive, instances ACTIVE, the logs are clean.
+
+    On one compute, the interface that carries the VXLAN tunnels has a smaller MTU than Neutron assumes. Small packets still fit once encapsulated. Full-size packets do not, and are dropped without any error.
+
+    One test shows it, a don't-fragment ping at two sizes:
+    → ping -M do -s 56: answered
+    → ping -M do -s <network MTU - 28>: 100% loss
+
+    The rule: the tunnel interface MTU must be at least the network MTU plus 50 bytes for VXLAN over IPv4.
+
+    A green ping only proves that small packets pass.
+  hashtags: [OpenStack, Neutron, Networking, MTU, VXLAN, OzarLand]
