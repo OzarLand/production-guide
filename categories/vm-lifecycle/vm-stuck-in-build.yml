@@ -32,7 +32,7 @@ diagram:
     not rescheduling."
 
 checks:
-  - label: Fault and selected host
+  - label: Fault, and host while in BUILD
     hint: openstack server show <id> -c fault -c OS-EXT-SRV-ATTR:host
   - label: Port binding and status
     hint: openstack port show <port> -c binding_vif_type -c status
@@ -48,7 +48,8 @@ caution:
       an `ERROR` instance that holds quota.
   - level: state-changing
     text: >-
-      Restarting the OVS agent or ovn-controller touches the data plane of the host. Do it on one host first.
+      Restarting the OVS agent can briefly disrupt data-plane changes on the host; ovn-controller re-syncs
+      every port. One host first.
 
 lesson: A networking problem wearing a compute symptom.
 
@@ -58,11 +59,11 @@ runbook:
   release: "2026.1"
 
 scope: >-
-  The mechanism (Nova waiting for network-vif-plugged, bounded by vif_plugging_timeout) is stable across recent
-  releases. Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS; the OVN steps of the runbook were
-  not run on a lab. The diagram shows the most common cause; the runbook also covers Neutron being unable to
+  The mechanism is stable across recent releases. Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS; the OVN steps of the runbook were
+  not run on a lab. The diagram shows the cause reproduced on the lab; the runbook also covers Neutron being unable to
   notify Nova, and a host that is simply slow. If network-vif-plugged was received and the boot still fails,
-  this is another problem.
+  this is another problem. An agent already dead before the build gives binding_failed and a fast "Exceeded
+  maximum number of retries" instead. Once in ERROR the host field is empty.
 
 linkedin:
   title: "VM stuck in BUILD? Look at the network before you look at Nova."

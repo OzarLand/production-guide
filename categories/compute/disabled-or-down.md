@@ -22,7 +22,7 @@
 **Think before acting:**
 
 - 🛑 **Destructive.** Never force down a compute that is not fenced. Nova then allows local deletes and evacuations of instances that are alive.
-- ⚠️ **State-changing.** `--enable` makes the host schedulable at once. Read the reason first, and ask whoever set it.
+- ⚠️ **State-changing.** `--enable` makes the host schedulable at once. Read the reason first: ask whoever set it, and never enable over an `AUTO:` one.
 
 ## Go deeper
 
@@ -46,7 +46,7 @@ It is a scheduling decision. Running instances are not affected.
 State (up / down) answers: does Nova believe the service is alive?
 It comes from the heartbeat, or from an operator who forced it down.
 
-The danger is in what Nova allows once a service is down: deleting an instance becomes a local delete (the guest is not touched), and evacuation is allowed.
+The danger is in what Nova allows once a service is down: deleting an instance becomes a local delete (the guest runs on until nova-compute returns and destroys it), and evacuation is allowed.
 
 So never force down a compute that is not fenced. And before you re-enable one, read the disable reason: a reason starting with "AUTO:" was set by the libvirt driver and clears itself.
 

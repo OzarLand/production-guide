@@ -35,7 +35,7 @@ checks:
   - label: Does a lease still renew?
     hint: "in a guest: ip -4 addr (valid_lft resets on renewal)"
   - label: "ML2/OVS: dnsmasq still serving?"
-    hint: pgrep -af dnsmasq | grep <network-id>
+    hint: "on the network node: pgrep -af dnsmasq | grep <network-id>"
   - label: "L3 HA: who holds the router?"
     hint: ip netns exec qrouter-<id> ip addr
 

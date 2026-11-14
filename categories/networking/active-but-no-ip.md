@@ -15,7 +15,7 @@
 **First checks** (read-only):
 
 1. **No fault in Nova**: `openstack server show <id> -c status -c fault -c addresses`
-2. **Console: DHCP asked, no answer**: `openstack console log show <id> | grep -iE 'dhcp|lease'`
+2. **Console: DHCP asked, no answer**: `openstack console log show <id> | grep -iE 'dhcp|lease|bound'`
 3. **Is any DHCP agent alive?**: `openstack network agent list --agent-type dhcp`
 4. **Agents serving that network**: `openstack network agent list --network <network>`
 
@@ -30,7 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [New instance is ACTIVE but unreachable, it never got an IP address](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/new-instance-gets-no-ip-dhcp-agents-down.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** Applies to ML2/OVS with DHCP agents. Lab-verified on OpenStack 2026.1 with Kolla-Ansible for the case where every DHCP agent is down; a single network without a live agent and a missing dnsmasq were not reproduced. With OVN, DHCP is answered locally by ovn-controller and this memo does not apply. Starting the agents again can move networks to another DHCP agent (observed on a lab, without traffic loss).
+**Where this holds.** Applies to ML2/OVS with DHCP agents. Lab-verified on OpenStack 2026.1 with Kolla-Ansible for the case where every DHCP agent is down; a single network without a live agent and a missing dnsmasq were not reproduced. OVN has no DHCP agent: this memo does not apply (not tested). A subnet with DHCP disabled gives the same symptom. Starting the agents again can move networks to another DHCP agent (observed on a lab, without traffic loss).
 
 ## LinkedIn kit
 

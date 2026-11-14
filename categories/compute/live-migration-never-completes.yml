@@ -20,7 +20,7 @@ diagram:
       tone: stop
     - see: "Source log: `live migration not completed after <n> sec`"
       means: Nova's timeout fired
-      sub: 800 s per GiB of memory by default
+      sub: 800 s per GiB by default, disk included
       tone: mute
   note: The instance keeps running on the source the whole time. Its users see nothing until the end.
 
@@ -28,11 +28,11 @@ checks:
   - label: The migration record and its id
     hint: openstack server migration list --server <id>
   - label: Its progress, a few times
-    hint: openstack server migration show <id> <migration-id>
+    hint: "server migration show <id> <mig-id> (compute API 2.24 or later)"
   - label: The size of the instance
     hint: openstack server show <id> -c flavor
   - label: When Nova gave up
-    hint: grep "live migration not completed" nova-compute.log
+    hint: grep "live migration not completed" nova-compute.log (source)
 
 caution:
   - level: state-changing

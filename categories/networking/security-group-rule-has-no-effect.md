@@ -14,7 +14,7 @@
 
 **First checks** (read-only):
 
-1. **Port: groups and port security**: `openstack port show <port> -c security_group_ids`
+1. **Port: groups and port security**: `openstack port show <port> (security groups, port security)`
 2. **The rules of each group**: `openstack security group rule list <group>`
 3. **Agents on the compute**: `openstack network agent list --host <compute>`
 4. **Read the rule against the traffic**: `ingress = to the instance ; IPv4 or IPv6 ; remote`
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [A security group rule has no effect. Traffic it allows is still blocked, or traffic it should block still passes](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/security-group-rules-not-applied.md) · `draft` on 2026.1 · highest risk in the page: state-changing
 - [Instance has its address and metadata, but is unreachable from outside](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/instance-unreachable-from-outside.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** The runbook is a draft, written from the Neutron 2026.1 documentation and source. The wrong rule, port security off and a dead agent were reproduced on a Kolla-Ansible all-in-one with ML2/OVS and the iptables hybrid firewall driver. ML2/OVN and the native OVS firewall driver were not run on a lab. The traffic can also be filtered elsewhere (guest firewall, router), or let through by an allowed address pair or a second port.
+**Where this holds.** The runbook is a draft, written from the Neutron 2026.1 documentation and source. The wrong rule, port security off and a dead agent were reproduced on a Kolla-Ansible all-in-one with ML2/OVS and the iptables hybrid firewall driver. ML2/OVN and the native OVS firewall driver were not run on a lab. The traffic can also be filtered elsewhere (guest firewall, router), or let through by an allowed address pair or a second port. The default-group case was only checked read-only. With OVN, an established connection may survive a rule removal (not verified).
 
 ## LinkedIn kit
 
@@ -48,7 +48,7 @@ Before blaming the agent, remember how security groups work: allow rules only, o
 → The agent on the compute is dead: the rule exists in the API, the compute still holds the old ones.
 → Both instances are in "default": that group admits its own members, by design.
 
-Three of these four are not a platform fault.
+Only one of these four is about the agent.
 
 Source runbook status: draft.
 

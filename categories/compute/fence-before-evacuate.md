@@ -15,7 +15,7 @@
 **First checks** (read-only):
 
 1. **Nova's view of the host**: `openstack compute service list --host <host> --long`
-2. **Instances and volumes involved**: `openstack server list --all-projects --host <host> --long`
+2. **Instances on the host**: `openstack server list --all-projects --host <host> --long`
 3. **Does the host answer at all?**: `ssh <host> uptime (if it answers, it is NOT dead: stop)`
 4. **Out-of-band power state**: `BMC, iDRAC, iLO: the authoritative source`
 
@@ -44,8 +44,8 @@ But Nova cannot tell a dead host from an unreachable one. If the host is only cu
 
 The order that makes it safe:
 1. Confirm out of band (BMC, switch port, storage side)
-2. Fence: power off, or isolate every port
-3. Disable the service, force it down only now
+2. Fence: power off, or failing that isolate every port
+3. Disable the service, and force it down if needed, only now
 4. Evacuate
 
 The same goes for auto-evacuation tooling: if it reacts to a lost heartbeat without fencing, it will one day destroy the workload it was meant to save.

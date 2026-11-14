@@ -10,14 +10,14 @@
 
 ## The memo as text
 
-**Situation.** You must restart libvirt or the Open vSwitch agent on a compute that runs instances. Will they stop, or lose the network? One setting each decides.
+**Situation.** You must restart libvirt or the Open vSwitch agent on a compute that runs instances. Will they stop, or lose the network? A setting or two each decides.
 
 **First checks** (read-only):
 
 1. **Anything in progress on the host?**: `openstack server list --all-projects --host <host> --long`
 2. **No migration running**: `openstack server migration list --host <host> --status running`
-3. **libvirt: host PID namespace?**: `docker inspect nova_libvirt: PidMode must be host`
-4. **OVS: are flows kept on restart?**: `grep -rn drop_flows_on_start /etc/neutron/`
+3. **libvirt: host PID and cgroup ns?**: `docker inspect nova_libvirt: PidMode and CgroupnsMode = host`
+4. **OVS: are flows kept on restart?**: `in the agent container: grep -r drop_flows_on_start /etc/neutron/`
 
 **Think before acting:**
 
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [I need to restart nova_libvirt on a compute. Its instances keep running](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/restarting-nova-libvirt-does-not-stop-instances.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 - [I need to restart the Open vSwitch agent on a compute. Its instances keep their network](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/restarting-the-ovs-agent-does-not-cut-instances.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible defaults (nova_libvirt with pid_mode host, ML2/OVS with drop_flows_on_start at its default), and observed in production on an earlier release by the runbooks' maintainer. The docker commands are Kolla-Ansible specific. OVN was not tested. If ovs-vswitchd itself does not answer, restarting the agent will not help: that is another runbook.
+**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible defaults (nova_libvirt with pid_mode host, ML2/OVS with drop_flows_on_start at its default), and observed in production on an earlier release by the runbooks' maintainer. The docker commands are Kolla-Ansible specific. OVN was not tested. No output from the grep, or False, means flows are kept. A packaged libvirtd (no container) was not tested. If ovs-vswitchd itself does not answer, restarting the agent will not help.
 
 ## LinkedIn kit
 
@@ -43,13 +43,13 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 The answer comes from knowing which process actually carries the workload.
 
-libvirtd: the qemu processes are processes of the host, not children locked inside the container. A new libvirtd re-attaches to them. It holds only if the container runs in the host's PID namespace.
+libvirtd: the qemu processes are processes of the host, not children locked inside the container. A new libvirtd re-attaches to them. It holds only if the container runs in the host's PID and cgroup namespaces.
 
 Open vSwitch agent: it does not carry traffic, ovs-vswitchd does. The agent only programs flows, and they stay in place while it restarts. It holds only if drop_flows_on_start is False, the default.
 
 In both cases something does wait during the restart: builds, migrations, new ports, security group changes.
 
-One setting each stands between "nobody noticed" and "every instance on the host stopped". Check it before, not after.
+A setting or two stand between "nobody noticed" and "every instance on the host stopped or cut off". Check it before, not after.
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/restarting-nova-libvirt-does-not-stop-instances.md
 More memos: https://github.com/OzarLand/production-guide

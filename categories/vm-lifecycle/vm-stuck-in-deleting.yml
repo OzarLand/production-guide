@@ -2,7 +2,7 @@ id: PG-04
 category: vm-lifecycle
 title: VM stuck in deleting?
 situation: >-
-  `task_state` stays `deleting`, and deleting again does nothing. With its compute up, the API sent the
+  `task_state` stays `deleting`, and while its compute is up, deleting again does nothing. The API sent the
   request and the compute did not finish it.
 
 diagram:
@@ -30,13 +30,13 @@ diagram:
 
 checks:
   - label: Task state, host, lock, fault
-    hint: openstack server show <id> -c locked -c fault
+    hint: "openstack server show <id> (task_state, host, locked, fault)"
   - label: Is its compute up for Nova?
     hint: openstack compute service list --service nova-compute --host <host>
   - label: Does the guest still exist?
     hint: virsh list --all --uuid | grep <server-id>
   - label: Did the compute get the request?
-    hint: grep "Terminating instance" nova-compute.log
+    hint: grep <server-id> nova-compute.log | grep "Terminating instance"
 
 caution:
   - level: avoid

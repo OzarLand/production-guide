@@ -16,12 +16,12 @@
 
 1. **Nodes, partitions, alarms**: `rabbitmq-diagnostics cluster_status (on every node)`
 2. **Local resource alarms**: `rabbitmq-diagnostics check_local_alarms`
-3. **Backlog without a consumer**: `rabbitmqctl list_queues name messages consumers`
+3. **Backlog without a consumer**: `rabbitmqctl list_queues name type messages consumers`
 4. **Khepri or Mnesia?**: `rabbitmqctl list_feature_flags name state | grep khepri`
 
 **Think before acting:**
 
-- 🛑 **Destructive.** Resetting RabbitMQ deletes every queue and message. Requests in flight are lost. Last resort, once the four cases are ruled out.
+- 🛑 **Destructive.** Resetting RabbitMQ deletes every queue and message. Last resort, for a cluster still broken once the four cases are ruled out.
 - ℹ️ **Know this.** With Khepri (RabbitMQ 4.2), Kolla-Ansible's `rabbitmq-reset-state` failed on a lab. Prove it on your release first.
 
 ## Go deeper
@@ -40,7 +40,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 ```text
 MessagingTimeout in Nova. In Neutron. In Cinder. Computes reported down although nova-compute is running. Agents flapping.
 
-When every service shows the same symptom at once, the services are rarely the cause. Look at what they share: the message bus.
+When every service shows the same symptom at once, start with what they share: the message bus.
 
 On every RabbitMQ node, read-only:
 → one node missing, the others agree: a node is down

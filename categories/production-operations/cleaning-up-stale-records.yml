@@ -15,7 +15,7 @@ diagram:
       tone: ok
     - step: "2"
       label: The API
-      sub: Reset the state, then delete through the API
+      sub: "Dead: reset to error, delete. Alive: reset to active"
       tone: warn
     - step: "3"
       label: "*-manage tools"
@@ -26,7 +26,8 @@ diagram:
       sub: "Last resort: backup, one row at a time"
       tone: stop
   note: >-
-    `nova-manage placement audit` is read-only as long as you do not pass `--delete`.
+    `placement audit` is read-only without `--delete`. Its list can include a stuck build or an instance
+    being moved: check each consumer first.
 
 checks:
   - label: Instances stuck in a transition
@@ -34,7 +35,7 @@ checks:
   - label: Allocations without an instance
     hint: nova-manage placement audit --verbose
   - label: Ports whose device is gone
-    hint: openstack port show <port> -c device_id
+    hint: "port show <port> -c device_id, then server show <that id>"
   - label: Volumes on a missing instance
     hint: openstack volume list --all-projects --status in-use
 
@@ -60,8 +61,9 @@ runbook:
 scope: >-
   Lab-verified on OpenStack 2026.1 with Kolla-Ansible; the volume steps were not run on that lab (no Cinder).
   "nova-manage placement audit" is read-only without --delete. Archiving and purging soft-deleted rows is a
-  destructive step of its own, with retention requirements to check first. Command behaviour changed across
-  python-openstackclient versions (10.5.0 asks for confirmation before "server set --state").
+  destructive step of its own, with retention requirements to check first. python-openstackclient
+  10.5.0 asks for confirmation before "server set --state"; earlier clients were not checked. "audit --delete"
+  also removes the allocation of an instance being moved.
 
 linkedin:
   title: "Stale records: project tools first, the database last"
@@ -73,8 +75,8 @@ linkedin:
     The clean-up is a ladder. Climb only as high as you must:
     1. Read-only audit
     2. The API: reset the state, then delete through the API
-    3. The *-manage tools, with --dry-run first
+    3. The *-manage tools: audit without --delete, heal with --dry-run first
     4. The database: last resort, with a backup, one row at a time
 
-    A direct database edit bypasses every consistency check the services perform. It is rarely the shortest path it appears to be.
+    A direct database edit bypasses every consistency check the services perform.
   hashtags: [OpenStack, Nova, Placement, OperationalExcellence, CloudOperations, OzarLand]

@@ -2,7 +2,7 @@ id: PG-28
 category: control-plane
 title: Out of database connections?
 situation: >-
-  API calls fail with 500, and the logs show one of three messages. Each one names a different place where
+  API calls fail with 500 or 502, and the logs show one of three messages. Each one names a different place where
   connections ran out.
 
 diagram:
@@ -22,17 +22,18 @@ diagram:
       tone: stop
     - see: "1040 Too many connections"
       mono: true
-      means: MariaDB, or ProxySQL clients
-      sub: Find who holds the connections
+      means: ProxySQL's client side
+      sub: MariaDB's own 1040 reaches direct clients only
       tone: stop
   note: >-
-    Behind ProxySQL, a full MariaDB reaches the services as `9001`. With no writer online, `9001` is Galera.
+    A full MariaDB reaches the services as `9001`. Hostgroup 0 empty with every node in hostgroup 3 is
+    Galera, not connections.
 
 checks:
   - label: Which message, in which services
     hint: grep the three messages in the service logs
   - label: "MariaDB: limit, current, peak"
-    hint: "SHOW GLOBAL STATUS LIKE 'Threads_connected'"
+    hint: "max_connections, Threads_connected, Max_used_connections"
   - label: Who holds the connections
     hint: "information_schema.processlist, grouped by user"
   - label: "ProxySQL: pool per backend"
@@ -48,7 +49,7 @@ caution:
       Raising a pool size before the load is understood. It can simply move the limit down to ProxySQL or
       MariaDB.
 
-lesson: Three limits, three messages. The message tells you which layer ran out.
+lesson: Three limits, three messages. The message tells you where to look first.
 
 runbook:
   path: recovery/database-too-many-connections-or-pool-exhausted.md
@@ -72,11 +73,11 @@ linkedin:
 
     → "QueuePool limit of size ... reached": the SQLAlchemy pool inside one service. The database is fine. That service holds its sessions too long.
     → "9001 Max connect timeout reached": ProxySQL could not get a backend connection in time.
-    → "1040 Too many connections": MariaDB itself, or ProxySQL's client side.
+    → "1040 Too many connections": ProxySQL's client side. A full MariaDB shows up in the services as 9001.
 
-    Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, simply moves the limit one layer down.
+    Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, can simply move the limit one layer down.
 
-    And one false friend: 9001 with no writer online is a Galera problem, not a connection problem.
+    And one false friend: 9001 with the writer hostgroup empty and every node offline is a Galera problem, not a connection problem.
 
     Source runbook status: draft.
   hashtags: [OpenStack, MariaDB, ProxySQL, ControlPlane, CloudOperations, OzarLand]

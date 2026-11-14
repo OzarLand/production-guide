@@ -4,9 +4,9 @@
 
 # PG-02 · No valid host, with free capacity?
 
-<img src="../../dist/pg-02-no-valid-host.png" alt="No valid host, with free capacity? Operational lesson: “No valid host” is three different failures. Read the exact message first." width="540">
+<img src="../../dist/pg-02-no-valid-host.png" alt="No valid host, with free capacity? Operational lesson: Three places a build can stop before any compute. Read the exact message first." width="540">
 
-> **Operational lesson.** “No valid host” is three different failures. Read the exact message first.
+> **Operational lesson.** Three places a build can stop before any compute. Read the exact message first.
 
 ## The memo as text
 
@@ -21,8 +21,8 @@
 
 **Think before acting:**
 
-- ⚠️ **State-changing.** Re-enabling a compute puts new instances on it at once. Read its disable reason first: it may still apply.
-- ⛔ **Avoid.** Changing a ratio directly in Placement. The compute overrides it on its next update: set ratios and reserved values in `nova.conf`.
+- ⚠️ **State-changing.** Re-enabling a compute makes it schedulable again. Read its disable reason first: it may still apply.
+- ⛔ **Avoid.** Changing a ratio directly in Placement. The compute usually overrides it on its next update: set ratios and reserved values in `nova.conf`.
 
 ## Go deeper
 
@@ -30,12 +30,12 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [No valid host was found, although capacity exists](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/no-valid-host-with-free-capacity.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** Cells v2 and Placement apply to every current release. Lab-verified on OpenStack 2026.1 (all-in-one, Kolla-Ansible): unmapped host, reserved memory, disabled service and a filter. Stale allocations and missing traits were not reproduced. The allocation candidate commands need the osc-placement plugin. Ironic is not covered.
+**Where this holds.** Cells v2 and Placement apply to every current release. Lab-verified on OpenStack 2026.1 (all-in-one, Kolla-Ansible): unmapped host, reserved memory, disabled service and a filter. Stale allocations and missing traits were not reproduced. A plain allocation candidate list still shows a disabled compute: add --forbidden COMPUTE_STATUS_DISABLED (Placement API 1.22) to see what Nova sees. The allocation candidate commands need the osc-placement plugin. Ironic is not covered.
 
 ## LinkedIn kit
 
 - **Image:** [`dist/pg-02-no-valid-host.png`](../../dist/pg-02-no-valid-host.png) (1080 × 1350)
-- **Post title:** "No valid host was found" is not one failure. It is three.
+- **Post title:** "No valid host": three places the request can stop
 
 ```text
 Capacity exists. Hypervisors have free CPU, memory and disk. And every build still ends with "No valid host was found".
@@ -46,7 +46,7 @@ Before opening a capacity ticket, read the exact message. It tells you where the
 → "No valid host was found." and nothing after: Placement returned no candidate. Look at inventory, allocation ratios, reserved values, disabled computes.
 → "Host '<host>' is not mapped to any cell": the compute exists but was never mapped. Classic after adding hosts.
 
-Three causes, three different fixes, one message that looks the same at a glance.
+Three places the request can stop. And the third message does not even say "No valid host".
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/no-valid-host-with-free-capacity.md
 More memos: https://github.com/OzarLand/production-guide

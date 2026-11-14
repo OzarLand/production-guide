@@ -15,9 +15,9 @@
 **First checks** (read-only):
 
 1. **The migration record and its id**: `openstack server migration list --server <id>`
-2. **Its progress, a few times**: `openstack server migration show <id> <migration-id>`
+2. **Its progress, a few times**: `server migration show <id> <mig-id> (compute API 2.24 or later)`
 3. **The size of the instance**: `openstack server show <id> -c flavor`
-4. **When Nova gave up**: `grep "live migration not completed" nova-compute.log`
+4. **When Nova gave up**: `grep "live migration not completed" nova-compute.log (source)`
 
 **Think before acting:**
 

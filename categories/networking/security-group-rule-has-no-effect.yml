@@ -18,7 +18,7 @@ diagram:
       means: No rule applies
       sub: Everything passes
       tone: stop
-    - see: The agent or ovn-controller of the compute is dead
+    - see: The OVS agent, ovn-controller or ovn-northd is down
       means: Not applied yet
       sub: The compute still holds the old rules
       tone: warn
@@ -29,7 +29,7 @@ diagram:
 
 checks:
   - label: "Port: groups and port security"
-    hint: openstack port show <port> -c security_group_ids
+    hint: "openstack port show <port> (security groups, port security)"
   - label: The rules of each group
     hint: openstack security group rule list <group>
   - label: Agents on the compute
@@ -60,7 +60,8 @@ scope: >-
   security off and a dead agent were reproduced on a Kolla-Ansible all-in-one with ML2/OVS and the iptables
   hybrid firewall driver. ML2/OVN and the native OVS firewall driver were not run on a lab. The traffic can
   also be filtered elsewhere (guest firewall, router), or let through by an allowed address pair or a second
-  port.
+  port. The default-group case was only checked read-only. With OVN, an established connection may survive
+  a rule removal (not verified).
 
 linkedin:
   title: "A security group rule that changes nothing: four things to check"
@@ -74,7 +75,7 @@ linkedin:
     → The agent on the compute is dead: the rule exists in the API, the compute still holds the old ones.
     → Both instances are in "default": that group admits its own members, by design.
 
-    Three of these four are not a platform fault.
+    Only one of these four is about the agent.
 
     Source runbook status: draft.
   hashtags: [OpenStack, Neutron, SecurityGroups, Networking, CloudOperations, OzarLand]

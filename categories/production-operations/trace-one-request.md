@@ -22,7 +22,7 @@
 **Think before acting:**
 
 - ⛔ **Avoid.** Reaching for the familiar fix. Applied to a different failure mode, it adds risk. Separate facts, hypotheses and assumptions.
-- ℹ️ **Know this.** Silence is not absence. On a lab, Glance logged no line for a successful call at the default log level.
+- ℹ️ **Know this.** Silence is not absence. At the default log level a lab saw no line from Glance, nova-conductor or neutron-server for calls that worked.
 
 ## Go deeper
 
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [What a VM creation traverses, and how to trace one failed boot by request id](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/diagnostics/what-a-vm-creation-traverses-and-tracing-by-request-id.md) · `lab-verified` on 2026.1 · highest risk in the page: read-only
 - [Following one request, instance, port or volume through the logs of every service and host](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/logs/tracing-one-request-across-services-and-hosts.md) · `draft` on 2026.1 · highest risk in the page: read-only
 
-**Where this holds.** The provisioning path is common to current releases; the tracing steps were lab-verified on OpenStack 2026.1 with Kolla-Ansible. The server events can be thin after a rescheduled build: the cause is then only in the logs. With agent-based networking neutron-server talks to its agents over RabbitMQ; OVN uses its own databases. The first error after the point where the request stopped can itself be the symptom of a dependency failing underneath (bus, database).
+**Where this holds.** The provisioning path is common to current releases; the tracing was lab-verified on a 2026.1 Kolla-Ansible all-in-one, on two failures (no valid host, port binding). With several controllers, search them all. Past nova-compute, follow the port id (agent) and the instance name (libvirt). The server events can be thin after a rescheduled build: the cause is then only in the logs. The first error after the point where the request stopped can itself be the symptom of a dependency failing underneath (bus, database).
 
 ## LinkedIn kit
 

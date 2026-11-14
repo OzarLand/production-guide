@@ -1,6 +1,6 @@
 id: PG-24
 category: networking
-title: One compute lost its network?
+title: One compute's VMs lost network?
 situation: >-
   Every instance of one compute stops answering, while Nova shows them `ACTIVE` and running.
   `ovs-vswitchd`, the process that switches their traffic, has stopped.
@@ -50,8 +50,8 @@ caution:
       restarting it will not help.
   - level: state-changing
     text: >-
-      Starting `ovs-vswitchd` is enough: the agent notices and programs the flows again. Then find out why
-      it stopped.
+      Start `ovs-vswitchd`, or restart it if it is stuck: the agent notices and programs the flows again.
+      Then find out why it stopped.
 
 lesson: Monitoring built on Nova states cannot see a data-plane outage.
 
@@ -82,7 +82,7 @@ linkedin:
     → Neutron: the Open vSwitch agent is not alive (a consequence, and it can take a minute to show)
     → the compute: ovs-vswitchd does not answer
 
-    The trap is to restart the agent, because it is the one reported dead. The agent only programs flows. Start ovs-vswitchd, and the agent recovers by itself.
+    The trap is to restart the agent, because it is the one reported dead. The agent only programs flows. Start ovs-vswitchd, or restart it if it is stuck, and the agent recovers by itself.
 
     Monitoring built on Nova states cannot see a data-plane outage.
   hashtags: [OpenStack, Neutron, OpenvSwitch, Monitoring, CloudOperations, OzarLand]

@@ -7,7 +7,7 @@ situation: >-
 
 diagram:
   type: chain
-  caption: Walk the path from the outside in
+  caption: Four checks, in this order
   nodes:
     - step: "1"
       label: Security group
@@ -21,7 +21,7 @@ diagram:
       tone: ink
     - step: "3"
       label: Router
-      sub: Interface on the subnet, external gateway?
+      sub: Gateway, interface, and live on its node?
       icon: route
       tone: ink
     - step: "4"
@@ -40,7 +40,7 @@ checks:
     hint: openstack security group rule list --ingress <group>
   - label: A floating IP on this port?
     hint: openstack floating ip list --port <port>
-  - label: Router gateway and interfaces
+  - label: Router external gateway
     hint: openstack router show <router> -c external_gateway_info
 
 caution:
@@ -52,7 +52,7 @@ caution:
     text: >-
       A new rule opens every port that uses the group. Use the narrowest source prefix that works.
 
-lesson: Each check rules out one cause. Go through them in order, from the outside in.
+lesson: Each check rules out one cause. Go through them in order.
 
 runbook:
   path: networking/instance-unreachable-from-outside.md
@@ -65,17 +65,17 @@ scope: >-
   Written from the Neutron 2026.1 documentation and lab-verified on ML2/OVS with the L3 agent and a legacy
   router, for the security group and floating IP causes. The OVN steps, the router missing on its node, the
   guest and the external network causes were not run on a lab. DVR, BGP-announced floating IPs and IPv6
-  without NAT are not covered.
+  without NAT, and provider networks attached directly to instances are not covered.
 
 linkedin:
-  title: "Reachable from inside, not from outside: walk the path in order"
+  title: "Reachable from inside, not from outside: four checks, in order"
   caption: |
     The instance got its address and its metadata. A neighbour in the same network reaches it. From outside: timeout.
 
-    This is rarely a mystery. It is four records to check, from the outside in:
+    This is rarely a mystery. It is four things to check, in order:
     1. Security group: is there an ingress rule for this protocol, port and source?
     2. Floating IP: is it on this port, and on this fixed address?
-    3. Router: an interface on the subnet, and an external gateway?
+    3. Router: an interface and a gateway, and is it really live on its node?
     4. The guest: its own firewall, a service actually listening?
 
     Most cases end at 1 or 2.

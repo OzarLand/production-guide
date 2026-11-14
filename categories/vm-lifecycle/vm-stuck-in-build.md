@@ -14,7 +14,7 @@
 
 **First checks** (read-only):
 
-1. **Fault and selected host**: `openstack server show <id> -c fault -c OS-EXT-SRV-ATTR:host`
+1. **Fault, and host while in BUILD**: `openstack server show <id> -c fault -c OS-EXT-SRV-ATTR:host`
 2. **Port binding and status**: `openstack port show <port> -c binding_vif_type -c status`
 3. **Networking agent on that host**: `openstack network agent list --host <compute>`
 4. **One host, or all of them?**: `openstack server list --all-projects --status ERROR --long`
@@ -22,7 +22,7 @@
 **Think before acting:**
 
 - ⛔ **Avoid.** Recreating before the cause is fixed. Nova does not retry the build elsewhere, and each failure leaves an `ERROR` instance that holds quota.
-- ⚠️ **State-changing.** Restarting the OVS agent or ovn-controller touches the data plane of the host. Do it on one host first.
+- ⚠️ **State-changing.** Restarting the OVS agent can briefly disrupt data-plane changes on the host; ovn-controller re-syncs every port. One host first.
 
 ## Go deeper
 
@@ -30,7 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [Instance stuck in BUILD, then ERROR after vif_plugging_timeout](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/instance-stuck-in-build-waiting-for-vif-plugged.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** The mechanism (Nova waiting for network-vif-plugged, bounded by vif_plugging_timeout) is stable across recent releases. Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS; the OVN steps of the runbook were not run on a lab. The diagram shows the most common cause; the runbook also covers Neutron being unable to notify Nova, and a host that is simply slow. If network-vif-plugged was received and the boot still fails, this is another problem.
+**Where this holds.** The mechanism is stable across recent releases. Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS; the OVN steps of the runbook were not run on a lab. The diagram shows the cause reproduced on the lab; the runbook also covers Neutron being unable to notify Nova, and a host that is simply slow. If network-vif-plugged was received and the boot still fails, this is another problem. An agent already dead before the build gives binding_failed and a fast "Exceeded maximum number of retries" instead. Once in ERROR the host field is empty.
 
 ## LinkedIn kit
 

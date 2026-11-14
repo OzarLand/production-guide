@@ -53,8 +53,8 @@ checks:
 caution:
   - level: destructive
     text: >-
-      `openstack volume set --state` only rewrites Cinder's record. If a hypervisor still has the volume,
-      the next attach gives it two writers.
+      `openstack volume set --state` only rewrites Cinder's record. Forced to `available` while a hypervisor
+      has the volume, it allows a second writer.
   - level: state-changing
     text: >-
       Restarting `cinder-volume` or `nova-compute` interrupts the other operations in progress on that
@@ -71,14 +71,14 @@ scope: >-
   Written from the 2026.1 documentation and lab-verified on an all-in-one lab with LVM over iSCSI. A compute
   that cannot connect to the storage, other backends (RBD, multipath) and a multinode platform were not
   observed. Attachment records need volume API 3.27 or later; the attachment ID in server volume list needs
-  compute API 2.89 or later. Does not cover multi-attach volumes.
+  compute API 2.89 or later. Does not cover multi-attach or boot volumes.
 
 linkedin:
   title: "Volume stuck in attaching or detaching: four views, one truth"
   caption: |
     A volume sits in "attaching" or "detaching" and every retry is refused. The tempting fix is one command: reset its state.
 
-    That command only rewrites Cinder's database record. It checks nothing. If a hypervisor still has the volume open, the next attach gives it a second writer, and two writers corrupt a filesystem.
+    That command only rewrites Cinder's database record. It does not check the hypervisor. If a hypervisor still has the volume open, the next attach gives it a second writer, and two writers corrupt a filesystem.
 
     Before any fix, compare four views of the same attachment:
     → Cinder: the volume status

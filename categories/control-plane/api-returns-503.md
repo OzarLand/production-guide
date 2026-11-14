@@ -15,7 +15,7 @@
 **First checks** (read-only):
 
 1. **Which node holds the VIP?**: `ip -brief address show dev <api-interface> (exactly one)`
-2. **HAProxy and keepalived running?**: `container status, on each load balancer node`
+2. **HAProxy, ProxySQL, keepalived running?**: `container status, on each load balancer node`
 3. **State of every backend server**: `"show stat" on the HAProxy stats socket`
 4. **The health check, by hand**: `curl http://<controller>:<port>/healthcheck`
 
@@ -44,9 +44,9 @@ That sentence does not come from Nova or Keystone. It comes from HAProxy, and it
 
 What HAProxy shows tells you where to go next:
 → every server DOWN with L4CON: the service is down on every controller. Its own log says why.
-→ servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency.
+→ servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency, or overloaded.
 → one server DOWN, the others UP: one controller. Users see nothing.
-→ the VIP on no node, or on two: keepalived, not a backend.
+→ no 503 but a refused connection or a timeout, with the VIP on no node or on two: the front door itself. HAProxy down everywhere, or VRRP adverts lost.
 
 The tempting fix is to restart things at the front door. But restarting a service whose database is unreachable only loses the requests in flight.
 

@@ -10,7 +10,7 @@ number. Each caption ends with the link to its runbook and to this repository.
 | # | Post title | Image | Page |
 |---|---|---|---|
 | PG-01 | VM stuck in BUILD? Look at the network before you look at Nova. | [`pg-01-vm-stuck-in-build.png`](dist/pg-01-vm-stuck-in-build.png) | [page](categories/vm-lifecycle/vm-stuck-in-build.md#linkedin-kit) |
-| PG-02 | "No valid host was found" is not one failure. It is three. | [`pg-02-no-valid-host.png`](dist/pg-02-no-valid-host.png) | [page](categories/vm-lifecycle/no-valid-host.md#linkedin-kit) |
+| PG-02 | "No valid host": three places the request can stop | [`pg-02-no-valid-host.png`](dist/pg-02-no-valid-host.png) | [page](categories/vm-lifecycle/no-valid-host.md#linkedin-kit) |
 | PG-03 | "Exceeded maximum number of retries" tells you nothing. The computes do. | [`pg-03-max-retries-exceeded.png`](dist/pg-03-max-retries-exceeded.png) | [page](categories/vm-lifecycle/max-retries-exceeded.md#linkedin-kit) |
 | PG-04 | VM stuck in deleting: why deleting it again does nothing | [`pg-04-vm-stuck-in-deleting.png`](dist/pg-04-vm-stuck-in-deleting.png) | [page](categories/vm-lifecycle/vm-stuck-in-deleting.md#linkedin-kit) |
 | PG-05 | ACTIVE in Nova, frozen for the user: the silent full disk | [`pg-05-active-but-frozen.png`](dist/pg-05-active-but-frozen.png) | [page](categories/vm-lifecycle/active-but-frozen.md#linkedin-kit) |
@@ -19,7 +19,7 @@ number. Each caption ends with the link to its runbook and to this repository.
 | PG-08 | Compute service: disabled and down are two different things | [`pg-08-disabled-or-down.png`](dist/pg-08-disabled-or-down.png) | [page](categories/compute/disabled-or-down.md#linkedin-kit) |
 | PG-09 | Emptying a compute host: one operation does not fit every instance | [`pg-09-emptying-a-host-for-maintenance.png`](dist/pg-09-emptying-a-host-for-maintenance.png) | [page](categories/compute/emptying-a-host-for-maintenance.md#linkedin-kit) |
 | PG-10 | ACTIVE, no fault, no IP address: Nova did its job | [`pg-10-active-but-no-ip.png`](dist/pg-10-active-but-no-ip.png) | [page](categories/networking/active-but-no-ip.md#linkedin-kit) |
-| PG-11 | Reachable from inside, not from outside: walk the path in order | [`pg-11-unreachable-from-outside.png`](dist/pg-11-unreachable-from-outside.png) | [page](categories/networking/unreachable-from-outside.md#linkedin-kit) |
+| PG-11 | Reachable from inside, not from outside: four checks, in order | [`pg-11-unreachable-from-outside.png`](dist/pg-11-unreachable-from-outside.png) | [page](categories/networking/unreachable-from-outside.md#linkedin-kit) |
 | PG-12 | Ping works, large transfers stall: test the largest packet | [`pg-12-ping-works-transfers-stall.png`](dist/pg-12-ping-works-transfers-stall.png) | [page](categories/networking/ping-works-transfers-stall.md#linkedin-kit) |
 | PG-13 | Volume stuck in attaching or detaching: four views, one truth | [`pg-13-volume-stuck-attaching-or-detaching.png`](dist/pg-13-volume-stuck-attaching-or-detaching.png) | [page](categories/storage/volume-stuck-attaching-or-detaching.md#linkedin-kit) |
 | PG-14 | A volume still in-use for an instance that no longer exists | [`pg-14-volume-in-use-by-a-missing-instance.png`](dist/pg-14-volume-in-use-by-a-missing-instance.png) | [page](categories/storage/volume-in-use-by-a-missing-instance.md#linkedin-kit) |
@@ -78,7 +78,7 @@ More memos: https://github.com/OzarLand/production-guide
 #OpenStack #Nova #Neutron #CloudOperations #SRE #OzarLand
 ```
 
-## PG-02 · "No valid host was found" is not one failure. It is three.
+## PG-02 · "No valid host": three places the request can stop
 
 Image: [`dist/pg-02-no-valid-host.png`](dist/pg-02-no-valid-host.png)
 
@@ -91,7 +91,7 @@ Before opening a capacity ticket, read the exact message. It tells you where the
 → "No valid host was found." and nothing after: Placement returned no candidate. Look at inventory, allocation ratios, reserved values, disabled computes.
 → "Host '<host>' is not mapped to any cell": the compute exists but was never mapped. Classic after adding hosts.
 
-Three causes, three different fixes, one message that looks the same at a glance.
+Three places the request can stop. And the third message does not even say "No valid host".
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/no-valid-host-with-free-capacity.md
 More memos: https://github.com/OzarLand/production-guide
@@ -108,12 +108,12 @@ Image: [`dist/pg-03-max-retries-exceeded.png`](dist/pg-03-max-retries-exceeded.p
 
 This fault is not a scheduling failure. The scheduler found hosts. Each one tried to spawn the instance, failed, and Nova moved on to the next alternate until none was left.
 
-So the message is a summary. The cause is the exception each compute logged, and it is usually the same on all of them:
+So the message is a summary. The cause is the exception each compute logged. Three patterns:
 → one broken compute: builds succeed elsewhere, just slower
 → a shared dependency: every attempt fails the same way
 → a request no host can satisfy at spawn time
 
-Start with `openstack server event list`, then read nova-compute.log on each host that tried.
+Start with the server's events, which name the computes that tried, then read nova-compute.log on each host that tried.
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/build-fails-exceeded-maximum-number-of-retries.md
 More memos: https://github.com/OzarLand/production-guide
@@ -147,7 +147,7 @@ More memos: https://github.com/OzarLand/production-guide
 Image: [`dist/pg-05-active-but-frozen.png`](dist/pg-05-active-but-frozen.png)
 
 ```text
-A user says their VM "hangs". Nova says ACTIVE. No fault, no error in the logs.
+A user says their VM "hangs". Nova says ACTIVE. Nothing in the nova-compute log.
 
 The compute's instance store is full. QEMU paused the instance on its next write, and it will wait there, losing nothing, until someone resumes it.
 
@@ -175,7 +175,7 @@ Image: [`dist/pg-06-compute-down-is-not-host-down.png`](dist/pg-06-compute-down-
 ```text
 openstack compute service list shows a compute "down". What does Nova actually know?
 
-Only this: it has heard nothing from the nova-compute agent of that host for service_down_time, 60 seconds by default. Nothing about the host. Nothing about the instances.
+Only this: it has heard nothing from the nova-compute agent of that host for service_down_time, 60 seconds by default, unless someone forced the service down. Nothing about the host. Nothing about the instances.
 
 When only the agent stopped, the hypervisor and the instances run on, and users notice nothing. The danger is the operator, or the automation, that treats it as a dead host: evacuating now starts a second copy of every instance, writing to the same volumes.
 
@@ -202,8 +202,8 @@ But Nova cannot tell a dead host from an unreachable one. If the host is only cu
 
 The order that makes it safe:
 1. Confirm out of band (BMC, switch port, storage side)
-2. Fence: power off, or isolate every port
-3. Disable the service, force it down only now
+2. Fence: power off, or failing that isolate every port
+3. Disable the service, and force it down if needed, only now
 4. Evacuate
 
 The same goes for auto-evacuation tooling: if it reacts to a lost heartbeat without fencing, it will one day destroy the workload it was meant to save.
@@ -229,7 +229,7 @@ It is a scheduling decision. Running instances are not affected.
 State (up / down) answers: does Nova believe the service is alive?
 It comes from the heartbeat, or from an operator who forced it down.
 
-The danger is in what Nova allows once a service is down: deleting an instance becomes a local delete (the guest is not touched), and evacuation is allowed.
+The danger is in what Nova allows once a service is down: deleting an instance becomes a local delete (the guest runs on until nova-compute returns and destroys it), and evacuation is allowed.
 
 So never force down a compute that is not fenced. And before you re-enable one, read the disable reason: a reason starting with "AUTO:" was set by the libvirt driver and clears itself.
 
@@ -249,8 +249,8 @@ A compute needs a reboot for a kernel or QEMU patch. "Just live-migrate everythi
 The operation depends on the instance:
 → shared storage or boot from volume: live migration
 → local disk: live block migration, the disk travels over the network
-→ memory changing faster than it copies: auto-converge or post-copy, else cold migration
-→ PCI passthrough, SR-IOV, vGPU: cold migration or restart, depending on your release
+→ memory changing faster than it copies: auto-converge or post-copy if enabled (off by default), else cold migration
+→ PCI passthrough, SR-IOV direct ports, vGPU: cold migration or restart, depending on your release
 
 And one trap of every patching campaign: migration from a newer libvirt/QEMU to an older one is not supported. Once a host is patched, instances can move onto it, but not back. The order of patching decides where instances can go.
 
@@ -285,17 +285,17 @@ More memos: https://github.com/OzarLand/production-guide
 #OpenStack #Neutron #Networking #CloudOperations #SRE #OzarLand
 ```
 
-## PG-11 · Reachable from inside, not from outside: walk the path in order
+## PG-11 · Reachable from inside, not from outside: four checks, in order
 
 Image: [`dist/pg-11-unreachable-from-outside.png`](dist/pg-11-unreachable-from-outside.png)
 
 ```text
 The instance got its address and its metadata. A neighbour in the same network reaches it. From outside: timeout.
 
-This is rarely a mystery. It is four records to check, from the outside in:
+This is rarely a mystery. It is four things to check, in order:
 1. Security group: is there an ingress rule for this protocol, port and source?
 2. Floating IP: is it on this port, and on this fixed address?
-3. Router: an interface on the subnet, and an external gateway?
+3. Router: an interface and a gateway, and is it really live on its node?
 4. The guest: its own firewall, a service actually listening?
 
 Most cases end at 1 or 2.
@@ -338,7 +338,7 @@ Image: [`dist/pg-13-volume-stuck-attaching-or-detaching.png`](dist/pg-13-volume-
 ```text
 A volume sits in "attaching" or "detaching" and every retry is refused. The tempting fix is one command: reset its state.
 
-That command only rewrites Cinder's database record. It checks nothing. If a hypervisor still has the volume open, the next attach gives it a second writer, and two writers corrupt a filesystem.
+That command only rewrites Cinder's database record. It does not check the hypervisor. If a hypervisor still has the volume open, the next attach gives it a second writer, and two writers corrupt a filesystem.
 
 Before any fix, compare four views of the same attachment:
 → Cinder: the volume status
@@ -361,14 +361,14 @@ More memos: https://github.com/OzarLand/production-guide
 Image: [`dist/pg-14-volume-in-use-by-a-missing-instance.png`](dist/pg-14-volume-in-use-by-a-missing-instance.png)
 
 ```text
-The instance was deleted, or evacuated. Its volume is still "in-use", attached to something that is gone. It cannot be deleted. It cannot be attached anywhere else.
+The instance was deleted, or evacuated. Its volume is still "in-use", with an attachment that points at something gone. After a deletion it can be neither deleted nor attached anywhere else.
 
 The data is intact. The risk is entirely in the fix.
 
 An attachment record is stale only if the hypervisor agrees:
 → instance gone from Nova, no domain on its last host uses the volume: stale, left by the deletion
 → the attachment ID is the one Nova's server volume list shows: in use, keep it
-→ the instance runs on host B, the connector names host A: stale, left by the evacuation
+→ the instance runs on host B, the connector names host A, and the ID is not the one Nova uses: stale, left by the evacuation
 
 Forcing the volume back to "available" checks none of this. If a hypervisor still has it open, the next attach creates a second writer.
 
@@ -415,7 +415,7 @@ Image: [`dist/pg-16-rpc-timeouts-everywhere.png`](dist/pg-16-rpc-timeouts-everyw
 ```text
 MessagingTimeout in Nova. In Neutron. In Cinder. Computes reported down although nova-compute is running. Agents flapping.
 
-When every service shows the same symptom at once, the services are rarely the cause. Look at what they share: the message bus.
+When every service shows the same symptom at once, start with what they share: the message bus.
 
 On every RabbitMQ node, read-only:
 → one node missing, the others agree: a node is down
@@ -438,7 +438,7 @@ More memos: https://github.com/OzarLand/production-guide
 Image: [`dist/pg-17-galera-lost-quorum.png`](dist/pg-17-galera-lost-quorum.png)
 
 ```text
-Every OpenStack API fails or hangs. The logs say "WSREP has not yet prepared node for application use".
+Most OpenStack APIs fail or hang. The logs show database errors: "WSREP has not yet prepared node for application use", or a ProxySQL connect timeout.
 
 Galera accepts writes only in a Primary component, a majority of the last known nodes. Lose the majority and the remaining nodes refuse queries. That is a safety mechanism, not the failure.
 
@@ -466,13 +466,13 @@ Image: [`dist/pg-18-before-restarting-an-agent.png`](dist/pg-18-before-restartin
 
 The answer comes from knowing which process actually carries the workload.
 
-libvirtd: the qemu processes are processes of the host, not children locked inside the container. A new libvirtd re-attaches to them. It holds only if the container runs in the host's PID namespace.
+libvirtd: the qemu processes are processes of the host, not children locked inside the container. A new libvirtd re-attaches to them. It holds only if the container runs in the host's PID and cgroup namespaces.
 
 Open vSwitch agent: it does not carry traffic, ovs-vswitchd does. The agent only programs flows, and they stay in place while it restarts. It holds only if drop_flows_on_start is False, the default.
 
 In both cases something does wait during the restart: builds, migrations, new ports, security group changes.
 
-One setting each stands between "nobody noticed" and "every instance on the host stopped". Check it before, not after.
+A setting or two stand between "nobody noticed" and "every instance on the host stopped or cut off". Check it before, not after.
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/restarting-nova-libvirt-does-not-stop-instances.md
 More memos: https://github.com/OzarLand/production-guide
@@ -516,10 +516,10 @@ No direct outage, which is why it is neglected. But they hold quota, distort cap
 The clean-up is a ladder. Climb only as high as you must:
 1. Read-only audit
 2. The API: reset the state, then delete through the API
-3. The *-manage tools, with --dry-run first
+3. The *-manage tools: audit without --delete, heal with --dry-run first
 4. The database: last resort, with a backup, one row at a time
 
-A direct database edit bypasses every consistency check the services perform. It is rarely the shortest path it appears to be.
+A direct database edit bypasses every consistency check the services perform.
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/stale-records-stuck-instances-orphan-ports-attachments.md
 More memos: https://github.com/OzarLand/production-guide
@@ -542,7 +542,7 @@ That stop was made by Nova itself, after the fact. The real sequence:
 
 Nova does not restart the guest. It stays SHUTOFF until someone starts it, and it boots like after a power loss.
 
-The usual root cause is not the instance. It is the inventory: reserved_host_memory_mb left at its 512 MB default on a host whose own services use several GB. The scheduler fills the compute up to a number the host cannot honour.
+A common root cause is not the instance but the inventory: reserved_host_memory_mb left at its 512 MB default on a host whose own services use several GB. The scheduler fills the compute up to a number the host cannot honour. Memory overcommit is another.
 
 Source runbook status: draft. Read its limits before acting.
 
@@ -557,7 +557,7 @@ More memos: https://github.com/OzarLand/production-guide
 Image: [`dist/pg-22-resize-not-finished.png`](dist/pg-22-resize-not-finished.png)
 
 ```text
-After a resize or a cold migration, an instance can sit in three states that look alike on a dashboard and mean very different things.
+After a resize or a cold migration, an instance can sit in three states that mean very different things.
 
 → VERIFY_RESIZE, no task state: the resize worked. It waits for a confirm or a revert, and can wait for days.
 → RESIZE, with a task state: the operation stopped part way. A service died, or a message was lost.
@@ -612,7 +612,7 @@ Three views of the same compute:
 → Neutron: the Open vSwitch agent is not alive (a consequence, and it can take a minute to show)
 → the compute: ovs-vswitchd does not answer
 
-The trap is to restart the agent, because it is the one reported dead. The agent only programs flows. Start ovs-vswitchd, and the agent recovers by itself.
+The trap is to restart the agent, because it is the one reported dead. The agent only programs flows. Start ovs-vswitchd, or restart it if it is stuck, and the agent recovers by itself.
 
 Monitoring built on Nova states cannot see a data-plane outage.
 
@@ -636,7 +636,7 @@ Before blaming the agent, remember how security groups work: allow rules only, o
 → The agent on the compute is dead: the rule exists in the API, the compute still holds the old ones.
 → Both instances are in "default": that group admits its own members, by design.
 
-Three of these four are not a platform fault.
+Only one of these four is about the agent.
 
 Source runbook status: draft.
 
@@ -657,9 +657,9 @@ That sentence does not come from Nova or Keystone. It comes from HAProxy, and it
 
 What HAProxy shows tells you where to go next:
 → every server DOWN with L4CON: the service is down on every controller. Its own log says why.
-→ servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency.
+→ servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency, or overloaded.
 → one server DOWN, the others UP: one controller. Users see nothing.
-→ the VIP on no node, or on two: keepalived, not a backend.
+→ no 503 but a refused connection or a timeout, with the VIP on no node or on two: the front door itself. HAProxy down everywhere, or VRRP adverts lost.
 
 The tempting fix is to restart things at the front door. But restarting a service whose database is unreachable only loses the requests in flight.
 
@@ -676,14 +676,14 @@ More memos: https://github.com/OzarLand/production-guide
 Image: [`dist/pg-27-401-with-a-valid-token.png`](dist/pg-27-401-with-a-valid-token.png)
 
 ```text
-openstack token issue works. The next command fails with 401. Then works. Then fails.
+openstack token issue works. But a script that keeps its token starts getting 401: sometimes every call, sometimes every other one.
 
-Behind a load balancer, that pattern means one Keystone node cannot validate tokens the others issued. Two usual reasons, and they do not hit the same tokens:
+Behind a load balancer, that means a Keystone node cannot validate tokens another one issued. Two usual reasons, and they do not hit the same tokens:
 
 → Fernet keys differ between nodes: it breaks tokens older than the token cache, 10 minutes by default. Long-running clients, scripts, Horizon sessions.
 → A clock is off on one node: it breaks fresh tokens too.
 
-Here is the trap. Keystone caches every token it issues in a cache shared by all nodes. For 10 minutes, any node answers from the cache, without decrypting anything. So your test with a brand new token passes on every node, with diverged keys.
+Here is the trap. On Kolla-Ansible, Keystone caches every token it issues in memcached, shared by all nodes. For 10 minutes, any node answers from the cache, without decrypting anything. So your test with a brand new token passes on every node, with diverged keys.
 
 Test with a token older than the cache. And compare key checksums across nodes, not key numbers.
 
@@ -704,11 +704,11 @@ With MariaDB behind ProxySQL, there are three places where connections can run o
 
 → "QueuePool limit of size ... reached": the SQLAlchemy pool inside one service. The database is fine. That service holds its sessions too long.
 → "9001 Max connect timeout reached": ProxySQL could not get a backend connection in time.
-→ "1040 Too many connections": MariaDB itself, or ProxySQL's client side.
+→ "1040 Too many connections": ProxySQL's client side. A full MariaDB shows up in the services as 9001.
 
-Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, simply moves the limit one layer down.
+Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, can simply move the limit one layer down.
 
-And one false friend: 9001 with no writer online is a Galera problem, not a connection problem.
+And one false friend: 9001 with the writer hostgroup empty and every node offline is a Galera problem, not a connection problem.
 
 Source runbook status: draft.
 

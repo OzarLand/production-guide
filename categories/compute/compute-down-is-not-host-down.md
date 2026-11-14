@@ -10,19 +10,19 @@
 
 ## The memo as text
 
-**Situation.** `down` only means Nova heard nothing from the `nova-compute` agent for `service_down_time` (60 s by default). It says nothing about the host.
+**Situation.** `down` means Nova heard nothing from `nova-compute` for 60 s (by default), or that someone forced it down. It says nothing about the host.
 
 **First checks** (read-only):
 
 1. **Which compute, since when**: `openstack compute service list --service nova-compute --long`
 2. **Is the host alive?**: `ping -c 3 <host> ; ssh <host> uptime`
 3. **Do its instances run?**: `virsh list --all (on the compute)`
-4. **Why did the agent stop?**: `exit code, OOM kill, AMQP errors in nova-compute.log`
+4. **Why did the agent stop?**: `container exit code and OOM flag ; AMQP errors in nova-compute.log`
 
 **Think before acting:**
 
 - 🛑 **Destructive.** Evacuating a host that is alive starts a second copy of each instance, both writing to the same volumes. That corrupts data.
-- ⛔ **Avoid.** Deleting its instances while the service is down. Each delete is a local delete: the guest keeps running on the host.
+- ⛔ **Avoid.** Deleting its instances now. Each is a local delete: the guest runs on, then is destroyed when the agent returns.
 
 ## Go deeper
 
@@ -30,6 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [nova-compute is down on a compute, but its instances are still running](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/nova-compute-down-instances-still-running.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 - [nova-compute is down and the compute refuses an SSH login, but the host is alive](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/nova-compute-down-host-alive-ssh-refused.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
+- [Compute host unreachable, instances down. Fence before you evacuate](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/compute-host-failure-fence-before-evacuate.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
 **Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS, and observed in production on an earlier release by the runbook's maintainer. The lab stopped the agent on purpose: the real causes (crash, OOM kill, lost RabbitMQ connection) were not reproduced. A host that answers on TCP but refuses your SSH login is alive too. Applies to the libvirt driver.
 
@@ -41,7 +42,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 ```text
 openstack compute service list shows a compute "down". What does Nova actually know?
 
-Only this: it has heard nothing from the nova-compute agent of that host for service_down_time, 60 seconds by default. Nothing about the host. Nothing about the instances.
+Only this: it has heard nothing from the nova-compute agent of that host for service_down_time, 60 seconds by default, unless someone forced the service down. Nothing about the host. Nothing about the instances.
 
 When only the agent stopped, the hypervisor and the instances run on, and users notice nothing. The danger is the operator, or the automation, that treats it as a dead host: evacuating now starts a second copy of every instance, writing to the same volumes.
 

@@ -14,7 +14,7 @@ diagram:
       icon: cloud
       tone: ok
     - label: Guest boots
-      sub: Asks for a lease, again and again
+      sub: Asks for a lease, gets no answer
       icon: monitor
       tone: warn
       badge: clock
@@ -28,14 +28,14 @@ diagram:
       tone: stop
   links: [ok, broken, broken back]
   note: >-
-    Running instances keep their lease (`dhcp_lease_duration`, 86400 s by default). The console log is the
-    only place the failure shows.
+    Running instances keep their lease (`dhcp_lease_duration`, 86400 s by default). On the Nova side,
+    only the console log shows the failure.
 
 checks:
   - label: No fault in Nova
     hint: openstack server show <id> -c status -c fault -c addresses
   - label: "Console: DHCP asked, no answer"
-    hint: openstack console log show <id> | grep -iE 'dhcp|lease'
+    hint: openstack console log show <id> | grep -iE 'dhcp|lease|bound'
   - label: Is any DHCP agent alive?
     hint: openstack network agent list --agent-type dhcp
   - label: Agents serving that network
@@ -60,7 +60,8 @@ runbook:
 scope: >-
   Applies to ML2/OVS with DHCP agents. Lab-verified on OpenStack 2026.1 with Kolla-Ansible for the case where
   every DHCP agent is down; a single network without a live agent and a missing dnsmasq were not reproduced.
-  With OVN, DHCP is answered locally by ovn-controller and this memo does not apply. Starting the agents again
+  OVN has no DHCP agent: this memo does not apply (not tested). A subnet with DHCP disabled gives the same
+  symptom. Starting the agents again
   can move networks to another DHCP agent (observed on a lab, without traffic loss).
 
 linkedin:

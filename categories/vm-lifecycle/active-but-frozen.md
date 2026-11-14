@@ -30,7 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [Compute disk full. An instance that writes is frozen, while Nova still shows it ACTIVE](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/compute-disk-full-instance-paused.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible, local qcow2 instance disks and CirrOS guests. Not tested with Ceph or other shared instance storage, volume-backed instances, or raw and LVM image backends. The pause comes from QEMU's default write-error policy; other releases were not checked. With Kolla-Ansible the store is the nova_compute Docker volume, not /var/lib/nova/instances on the host.
+**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible, local qcow2 instance disks and CirrOS guests. Not tested with Ceph or other shared instance storage, volume-backed instances, or raw and LVM image backends. The pause comes from QEMU's default write-error policy; other releases were not checked. With Kolla-Ansible the store is the nova_compute Docker volume, and virsh runs in the nova_libvirt container.
 
 ## LinkedIn kit
 
@@ -38,7 +38,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - **Post title:** ACTIVE in Nova, frozen for the user: the silent full disk
 
 ```text
-A user says their VM "hangs". Nova says ACTIVE. No fault, no error in the logs.
+A user says their VM "hangs". Nova says ACTIVE. Nothing in the nova-compute log.
 
 The compute's instance store is full. QEMU paused the instance on its next write, and it will wait there, losing nothing, until someone resumes it.
 

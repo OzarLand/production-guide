@@ -14,7 +14,7 @@
 
 **First checks** (read-only):
 
-1. **Which computes tried**: `openstack server event list <server-id>`
+1. **Which computes tried**: `openstack server event show <server-id> <request-id>`
 2. **The real exception, on each one**: `grep <server-id> nova-compute.log`
 3. **Same error on every compute?**: `then look for a shared dependency, or a request no host can serve`
 4. **Computes and agents up?**: `openstack compute service list ; openstack network agent list`
@@ -42,12 +42,12 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 This fault is not a scheduling failure. The scheduler found hosts. Each one tried to spawn the instance, failed, and Nova moved on to the next alternate until none was left.
 
-So the message is a summary. The cause is the exception each compute logged, and it is usually the same on all of them:
+So the message is a summary. The cause is the exception each compute logged. Three patterns:
 → one broken compute: builds succeed elsewhere, just slower
 → a shared dependency: every attempt fails the same way
 → a request no host can satisfy at spawn time
 
-Start with `openstack server event list`, then read nova-compute.log on each host that tried.
+Start with the server's events, which name the computes that tried, then read nova-compute.log on each host that tried.
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/build-fails-exceeded-maximum-number-of-retries.md
 More memos: https://github.com/OzarLand/production-guide

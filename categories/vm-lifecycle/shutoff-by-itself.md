@@ -15,7 +15,7 @@
 **First checks** (read-only):
 
 1. **The stop nobody asked for**: `openstack server event list <server-id>`
-2. **Did the kernel kill QEMU?**: `dmesg -T | grep -E 'oom-killer|Killed process'`
+2. **Did the kernel kill QEMU?**: `sudo dmesg -T | grep -E 'oom-killer|Killed process'`
 3. **Memory of the host now**: `free -m (on the instance's compute)`
 4. **What nova-compute logged**: `grep "shutdown by itself" nova-compute.log`
 
@@ -48,7 +48,7 @@ That stop was made by Nova itself, after the fact. The real sequence:
 
 Nova does not restart the guest. It stays SHUTOFF until someone starts it, and it boots like after a power loss.
 
-The usual root cause is not the instance. It is the inventory: reserved_host_memory_mb left at its 512 MB default on a host whose own services use several GB. The scheduler fills the compute up to a number the host cannot honour.
+A common root cause is not the instance but the inventory: reserved_host_memory_mb left at its 512 MB default on a host whose own services use several GB. The scheduler fills the compute up to a number the host cannot honour. Memory overcommit is another.
 
 Source runbook status: draft. Read its limits before acting.
 

@@ -5,7 +5,7 @@
 # VM lifecycle
 
 - **PG-01** [VM stuck in BUILD?](vm-stuck-in-build.md): A networking problem wearing a compute symptom.
-- **PG-02** [No valid host, with free capacity?](no-valid-host.md): “No valid host” is three different failures. Read the exact message first.
+- **PG-02** [No valid host, with free capacity?](no-valid-host.md): Three places a build can stop before any compute. Read the exact message first.
 - **PG-03** [Exceeded maximum number of retries?](max-retries-exceeded.md): The fault is a summary. The cause is in the log of each compute that tried.
 - **PG-04** [VM stuck in deleting?](vm-stuck-in-deleting.md): A delete has two paths. Know which one Nova will take before you retry.
 - **PG-05** [ACTIVE in Nova, frozen for users?](active-but-frozen.md): Nova does not watch the disk. Monitor the instance store and the power state.

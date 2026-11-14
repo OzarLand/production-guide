@@ -10,14 +10,14 @@
 
 ## The memo as text
 
-**Situation.** `task_state` stays `deleting`, and deleting again does nothing. With its compute up, the API sent the request and the compute did not finish it.
+**Situation.** `task_state` stays `deleting`, and while its compute is up, deleting again does nothing. The API sent the request and the compute did not finish it.
 
 **First checks** (read-only):
 
-1. **Task state, host, lock, fault**: `openstack server show <id> -c locked -c fault`
+1. **Task state, host, lock, fault**: `openstack server show <id> (task_state, host, locked, fault)`
 2. **Is its compute up for Nova?**: `openstack compute service list --service nova-compute --host <host>`
 3. **Does the guest still exist?**: `virsh list --all --uuid | grep <server-id>`
-4. **Did the compute get the request?**: `grep "Terminating instance" nova-compute.log`
+4. **Did the compute get the request?**: `grep <server-id> nova-compute.log | grep "Terminating instance"`
 
 **Think before acting:**
 

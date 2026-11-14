@@ -16,7 +16,7 @@
 
 1. **Do instances still answer?**: `ping from a host on the instance network`
 2. **Does a lease still renew?**: `in a guest: ip -4 addr (valid_lft resets on renewal)`
-3. **ML2/OVS: dnsmasq still serving?**: `pgrep -af dnsmasq | grep <network-id>`
+3. **ML2/OVS: dnsmasq still serving?**: `on the network node: pgrep -af dnsmasq | grep <network-id>`
 4. **L3 HA: who holds the router?**: `ip netns exec qrouter-<id> ip addr`
 
 **Think before acting:**

@@ -16,7 +16,7 @@
 
 1. **Instances stuck in a transition**: `openstack server list --all-projects --long`
 2. **Allocations without an instance**: `nova-manage placement audit --verbose`
-3. **Ports whose device is gone**: `openstack port show <port> -c device_id`
+3. **Ports whose device is gone**: `port show <port> -c device_id, then server show <that id>`
 4. **Volumes on a missing instance**: `openstack volume list --all-projects --status in-use`
 
 **Think before acting:**
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Stale records. Instances stuck in BUILD, ERROR or deleting, orphan ports and attachments, phantom allocations](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/stale-records-stuck-instances-orphan-ports-attachments.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 - [Placement allocations do not match the instances. Compute looks full or empty, audit and heal](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/placement-allocations-out-of-sync-audit-and-heal.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible; the volume steps were not run on that lab (no Cinder). "nova-manage placement audit" is read-only without --delete. Archiving and purging soft-deleted rows is a destructive step of its own, with retention requirements to check first. Command behaviour changed across python-openstackclient versions (10.5.0 asks for confirmation before "server set --state").
+**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible; the volume steps were not run on that lab (no Cinder). "nova-manage placement audit" is read-only without --delete. Archiving and purging soft-deleted rows is a destructive step of its own, with retention requirements to check first. python-openstackclient 10.5.0 asks for confirmation before "server set --state"; earlier clients were not checked. "audit --delete" also removes the allocation of an instance being moved.
 
 ## LinkedIn kit
 
@@ -46,10 +46,10 @@ No direct outage, which is why it is neglected. But they hold quota, distort cap
 The clean-up is a ladder. Climb only as high as you must:
 1. Read-only audit
 2. The API: reset the state, then delete through the API
-3. The *-manage tools, with --dry-run first
+3. The *-manage tools: audit without --delete, heal with --dry-run first
 4. The database: last resort, with a backup, one row at a time
 
-A direct database edit bypasses every consistency check the services perform. It is rarely the shortest path it appears to be.
+A direct database edit bypasses every consistency check the services perform.
 
 Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/stale-records-stuck-instances-orphan-ports-attachments.md
 More memos: https://github.com/OzarLand/production-guide

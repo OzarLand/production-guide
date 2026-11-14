@@ -10,14 +10,14 @@
 
 ## The memo as text
 
-**Situation.** `openstack token issue` works, then service calls fail with 401, often every other time. The Keystone node asked to validate the token cannot read it, or finds it expired.
+**Situation.** `openstack token issue` works, then service calls fail with 401, often every other time. The Keystone node asked to validate the token cannot read it, or finds it expired or revoked.
 
 **First checks** (read-only):
 
-1. **Key checksums, on every node**: `md5sum /etc/keystone/fernet-keys/*`
+1. **Key checksums, on every node**: `md5sum /etc/keystone/fernet-keys/* (Kolla: in keystone_fernet)`
 2. **Is key distribution healthy?**: `Kolla-Ansible: health of the keystone_fernet container`
-3. **Which node rejects an aged token?**: `validate one token against each Keystone backend`
-4. **Clocks of the Keystone nodes**: `chronyc tracking ; date -u`
+3. **Which node rejects an aged token?**: `aged token, suspect node first: only the 1st answer counts`
+4. **Clocks of the Keystone nodes**: `chronyc tracking, or timedatectl ; date -u`
 
 **Think before acting:**
 
@@ -39,14 +39,14 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - **Post title:** 401 with a token that should be valid: the fresh token is lying to you
 
 ```text
-openstack token issue works. The next command fails with 401. Then works. Then fails.
+openstack token issue works. But a script that keeps its token starts getting 401: sometimes every call, sometimes every other one.
 
-Behind a load balancer, that pattern means one Keystone node cannot validate tokens the others issued. Two usual reasons, and they do not hit the same tokens:
+Behind a load balancer, that means a Keystone node cannot validate tokens another one issued. Two usual reasons, and they do not hit the same tokens:
 
 → Fernet keys differ between nodes: it breaks tokens older than the token cache, 10 minutes by default. Long-running clients, scripts, Horizon sessions.
 → A clock is off on one node: it breaks fresh tokens too.
 
-Here is the trap. Keystone caches every token it issues in a cache shared by all nodes. For 10 minutes, any node answers from the cache, without decrypting anything. So your test with a brand new token passes on every node, with diverged keys.
+Here is the trap. On Kolla-Ansible, Keystone caches every token it issues in memcached, shared by all nodes. For 10 minutes, any node answers from the cache, without decrypting anything. So your test with a brand new token passes on every node, with diverged keys.
 
 Test with a token older than the cache. And compare key checksums across nodes, not key numbers.
 

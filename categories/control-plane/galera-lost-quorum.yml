@@ -14,15 +14,15 @@ diagram:
       means: Healthy
       sub: Look at other shared dependencies
       tone: ok
-    - see: "One node `non-Primary` or stopped"
+    - see: "One node `non-Primary` or stopped, others `Primary`"
       means: Quorum kept
-      sub: Fix that node, it rejoins
+      sub: Fix and start that node only
       tone: warn
     - see: "Every running node `non-Primary`"
       means: Quorum lost
       sub: Restore connectivity first
       tone: stop
-    - see: No node running
+    - see: No node running, or restarting in a loop
       means: Full stop
       sub: Recover from the most advanced node
       tone: stop
@@ -31,8 +31,8 @@ checks:
   - label: Is MariaDB up on each node?
     hint: container or service status, on every node
   - label: Each node's view of the cluster
-    hint: "SHOW STATUS LIKE 'wsrep_cluster_status' (and _size)"
-  - label: How far each node got
+    hint: "SHOW STATUS LIKE 'wsrep_%': cluster_status, size, state"
+  - label: How far each running node got
     hint: "SHOW STATUS LIKE 'wsrep_last_committed'"
   - label: The end of the MariaDB log
     hint: why the node left, or why it does not start
@@ -44,10 +44,10 @@ caution:
       had. It cannot be undone.
   - level: destructive
     text: >-
-      A quorum reset declares one node the reference. On both sides of a split, it creates two clusters with
-      different data.
+      `kolla-ansible mariadb-recovery` stops MariaDB on every node. It is for a fully stopped cluster, not
+      for one node down.
 
-lesson: The data is at risk only during the recovery. Compare every node before choosing one.
+lesson: The data is at risk only during the recovery. Know the most advanced node before you bootstrap.
 
 runbook:
   path: recovery/galera-cluster-lost-quorum-database-unavailable.md
@@ -58,12 +58,14 @@ scope: >-
   Written from Kolla-Ansible 2026.1 and the Galera crash recovery and quorum reset guides; lab-verified on a
   disposable Kolla-Ansible lab with ProxySQL in front of MariaDB. With ProxySQL the services see its errors
   ("Max connect timeout reached") instead of the WSREP message. Running instances keep running. Single-node
-  MariaDB, restoring from a backup and Galera arbitrators are not covered.
+  MariaDB and restoring from a backup are not covered. With every node stopped, wsrep_last_committed cannot be
+  queried: the position comes from --wsrep-recover. A quorum reset run on both sides of a split creates two
+  clusters.
 
 linkedin:
   title: "Galera lost quorum: the data is at risk during the recovery, not before"
   caption: |
-    Every OpenStack API fails or hangs. The logs say "WSREP has not yet prepared node for application use".
+    Most OpenStack APIs fail or hang. The logs show database errors: "WSREP has not yet prepared node for application use", or a ProxySQL connect timeout.
 
     Galera accepts writes only in a Primary component, a majority of the last known nodes. Lose the majority and the remaining nodes refuse queries. That is a safety mechanism, not the failure.
 

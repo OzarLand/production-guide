@@ -17,12 +17,12 @@
 1. **MTU Neutron gives the network**: `openstack network show <network> -c mtu`
 2. **Don't-fragment ping, two sizes**: `from the router namespace: ping -M do -s <mtu-28> <ip>`
 3. **Tunnel interface MTU, per compute**: `ip link show <tunnel-interface>`
-4. **The underlay between hosts**: `the same ping between the tunnel addresses of two hosts`
+4. **The underlay between hosts**: `ping -M do -s <tunnel MTU-28> -I <local-ip> <remote-local-ip>`
 
 **Think before acting:**
 
 - ⚠️ **State-changing.** Changing the MTU of an interface that also carries management traffic can cut it. Use the out-of-band console if in doubt.
-- ⚠️ **State-changing.** Lowering `global_physnet_mtu` changes every tenant network. Instances pick it up only at their next DHCP renewal or reboot.
+- ⚠️ **State-changing.** Lowering `global_physnet_mtu` affects new networks only: existing ones need `network set --mtu`.
 
 ## Go deeper
 
@@ -30,7 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [Instances of one compute answer ping, but large transfers stall](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/tunnel-mtu-mismatch-large-packets-dropped.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS, VXLAN over an IPv4 underlay, for a tunnel interface whose MTU was lowered on one compute. A switch on the path dropping large frames, a platform-wide mismatch and an IPv6 underlay were not reproduced. Neutron never re-reads the MTU of the hosts after deployment. OVN was not tested.
+**Where this holds.** Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS, VXLAN over an IPv4 underlay, for a tunnel interface whose MTU was lowered on one compute. A switch on the path dropping large frames, a platform-wide mismatch and an IPv6 underlay were not reproduced. Neutron never re-reads the MTU of the hosts after deployment. Instances pick up a new MTU at DHCP renewal or reboot. The global_physnet_mtu change was not run on the lab. OVN was not tested.
 
 ## LinkedIn kit
 

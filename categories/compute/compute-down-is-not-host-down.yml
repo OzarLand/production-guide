@@ -2,8 +2,8 @@ id: PG-06
 category: compute
 title: Compute “down”. Is the host dead?
 situation: >-
-  `down` only means Nova heard nothing from the `nova-compute` agent for `service_down_time` (60 s by
-  default). It says nothing about the host.
+  `down` means Nova heard nothing from `nova-compute` for 60 s (by default), or that someone forced it
+  down. It says nothing about the host.
 
 diagram:
   type: compare
@@ -37,7 +37,7 @@ checks:
   - label: Do its instances run?
     hint: virsh list --all (on the compute)
   - label: Why did the agent stop?
-    hint: "exit code, OOM kill, AMQP errors in nova-compute.log"
+    hint: "container exit code and OOM flag ; AMQP errors in nova-compute.log"
 
 caution:
   - level: destructive
@@ -46,8 +46,8 @@ caution:
       volumes. That corrupts data.
   - level: avoid
     text: >-
-      Deleting its instances while the service is down. Each delete is a local delete: the guest keeps
-      running on the host.
+      Deleting its instances now. Each is a local delete: the guest runs on, then is destroyed when the
+      agent returns.
 
 lesson: "“Down” is a missing heartbeat, not a dead host. Prove it before you act."
 
@@ -57,6 +57,7 @@ runbook:
   release: "2026.1"
   also:
     - recovery/nova-compute-down-host-alive-ssh-refused.md
+    - recovery/compute-host-failure-fence-before-evacuate.md
 
 scope: >-
   Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS, and observed in production on an earlier
@@ -69,7 +70,7 @@ linkedin:
   caption: |
     openstack compute service list shows a compute "down". What does Nova actually know?
 
-    Only this: it has heard nothing from the nova-compute agent of that host for service_down_time, 60 seconds by default. Nothing about the host. Nothing about the instances.
+    Only this: it has heard nothing from the nova-compute agent of that host for service_down_time, 60 seconds by default, unless someone forced the service down. Nothing about the host. Nothing about the instances.
 
     When only the agent stopped, the hypervisor and the instances run on, and users notice nothing. The danger is the operator, or the automation, that treats it as a dead host: evacuating now starts a second copy of every instance, writing to the same volumes.
 

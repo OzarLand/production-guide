@@ -26,12 +26,12 @@ diagram:
     In `VERIFY_RESIZE` the old copy is kept: Placement holds resources on both computes until the confirm.
 
 checks:
-  - label: State, host, flavor, fault
-    hint: openstack server show <id> -c status -c flavor -c fault
+  - label: State, task state, fault
+    hint: openstack server show <id> -c status -c OS-EXT-STS:task_state -c fault
   - label: The migration record
     hint: openstack server migration list --server <id>
-  - label: The failed step
-    hint: openstack server event list <id>
+  - label: Its actions, then the failed step
+    hint: "openstack server event list <id>, then event show <id> <req-id>"
   - label: Are both computes up?
     hint: openstack compute service list --service nova-compute
 
@@ -56,13 +56,13 @@ scope: >-
   Written from the Nova 2026.1 source and lab-verified with Kolla-Ansible, two computes and local qcow2
   disks: the unconfirmed resize, a service dying part way, SSH between computes and a smaller disk were
   reproduced; a destination that cannot run the guest was not. Nova does not shrink disks, except a root
-  disk booted from volume. With resize_confirm_window set, resizes are confirmed automatically and can no
-  longer be reverted.
+  disk booted from volume. With resize_confirm_window set, resizes older than the window are confirmed without
+  the owner and can no longer be reverted.
 
 linkedin:
   title: "VERIFY_RESIZE is not a stuck state. It is a pending decision."
   caption: |
-    After a resize or a cold migration, an instance can sit in three states that look alike on a dashboard and mean very different things.
+    After a resize or a cold migration, an instance can sit in three states that mean very different things.
 
     → VERIFY_RESIZE, no task state: the resize worked. It waits for a confirm or a revert, and can wait for days.
     → RESIZE, with a task state: the operation stopped part way. A service died, or a message was lost.

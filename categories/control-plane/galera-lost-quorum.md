@@ -4,9 +4,9 @@
 
 # PG-17 · APIs fail on database errors?
 
-<img src="../../dist/pg-17-galera-lost-quorum.png" alt="APIs fail on database errors? Operational lesson: The data is at risk only during the recovery. Compare every node before choosing one." width="540">
+<img src="../../dist/pg-17-galera-lost-quorum.png" alt="APIs fail on database errors? Operational lesson: The data is at risk only during the recovery. Know the most advanced node before you bootstrap." width="540">
 
-> **Operational lesson.** The data is at risk only during the recovery. Compare every node before choosing one.
+> **Operational lesson.** The data is at risk only during the recovery. Know the most advanced node before you bootstrap.
 
 ## The memo as text
 
@@ -15,14 +15,14 @@
 **First checks** (read-only):
 
 1. **Is MariaDB up on each node?**: `container or service status, on every node`
-2. **Each node's view of the cluster**: `SHOW STATUS LIKE 'wsrep_cluster_status' (and _size)`
-3. **How far each node got**: `SHOW STATUS LIKE 'wsrep_last_committed'`
+2. **Each node's view of the cluster**: `SHOW STATUS LIKE 'wsrep_%': cluster_status, size, state`
+3. **How far each running node got**: `SHOW STATUS LIKE 'wsrep_last_committed'`
 4. **The end of the MariaDB log**: `why the node left, or why it does not start`
 
 **Think before acting:**
 
 - 🛑 **Destructive.** Bootstrapping from a node that is not the most advanced discards the transactions only the other nodes had. It cannot be undone.
-- 🛑 **Destructive.** A quorum reset declares one node the reference. On both sides of a split, it creates two clusters with different data.
+- 🛑 **Destructive.** `kolla-ansible mariadb-recovery` stops MariaDB on every node. It is for a fully stopped cluster, not for one node down.
 
 ## Go deeper
 
@@ -30,7 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [Every API fails on database errors. The Galera cluster lost quorum, or stopped on every node](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/galera-cluster-lost-quorum-database-unavailable.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Written from Kolla-Ansible 2026.1 and the Galera crash recovery and quorum reset guides; lab-verified on a disposable Kolla-Ansible lab with ProxySQL in front of MariaDB. With ProxySQL the services see its errors ("Max connect timeout reached") instead of the WSREP message. Running instances keep running. Single-node MariaDB, restoring from a backup and Galera arbitrators are not covered.
+**Where this holds.** Written from Kolla-Ansible 2026.1 and the Galera crash recovery and quorum reset guides; lab-verified on a disposable Kolla-Ansible lab with ProxySQL in front of MariaDB. With ProxySQL the services see its errors ("Max connect timeout reached") instead of the WSREP message. Running instances keep running. Single-node MariaDB and restoring from a backup are not covered. With every node stopped, wsrep_last_committed cannot be queried: the position comes from --wsrep-recover. A quorum reset run on both sides of a split creates two clusters.
 
 ## LinkedIn kit
 
@@ -38,7 +38,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - **Post title:** Galera lost quorum: the data is at risk during the recovery, not before
 
 ```text
-Every OpenStack API fails or hangs. The logs say "WSREP has not yet prepared node for application use".
+Most OpenStack APIs fail or hang. The logs show database errors: "WSREP has not yet prepared node for application use", or a ProxySQL connect timeout.
 
 Galera accepts writes only in a Primary component, a majority of the last known nodes. Lose the majority and the remaining nodes refuse queries. That is a safety mechanism, not the failure.
 

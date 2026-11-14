@@ -4,18 +4,18 @@
 
 # PG-28 · Out of database connections?
 
-<img src="../../dist/pg-28-database-connections-exhausted.png" alt="Out of database connections? Operational lesson: Three limits, three messages. The message tells you which layer ran out." width="540">
+<img src="../../dist/pg-28-database-connections-exhausted.png" alt="Out of database connections? Operational lesson: Three limits, three messages. The message tells you where to look first." width="540">
 
-> **Operational lesson.** Three limits, three messages. The message tells you which layer ran out.
+> **Operational lesson.** Three limits, three messages. The message tells you where to look first.
 
 ## The memo as text
 
-**Situation.** API calls fail with 500, and the logs show one of three messages. Each one names a different place where connections ran out.
+**Situation.** API calls fail with 500 or 502, and the logs show one of three messages. Each one names a different place where connections ran out.
 
 **First checks** (read-only):
 
 1. **Which message, in which services**: `grep the three messages in the service logs`
-2. **MariaDB: limit, current, peak**: `SHOW GLOBAL STATUS LIKE 'Threads_connected'`
+2. **MariaDB: limit, current, peak**: `max_connections, Threads_connected, Max_used_connections`
 3. **Who holds the connections**: `information_schema.processlist, grouped by user`
 4. **ProxySQL: pool per backend**: `stats_mysql_connection_pool, on the node holding the VIP`
 
@@ -45,11 +45,11 @@ With MariaDB behind ProxySQL, there are three places where connections can run o
 
 → "QueuePool limit of size ... reached": the SQLAlchemy pool inside one service. The database is fine. That service holds its sessions too long.
 → "9001 Max connect timeout reached": ProxySQL could not get a backend connection in time.
-→ "1040 Too many connections": MariaDB itself, or ProxySQL's client side.
+→ "1040 Too many connections": ProxySQL's client side. A full MariaDB shows up in the services as 9001.
 
-Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, simply moves the limit one layer down.
+Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, can simply move the limit one layer down.
 
-And one false friend: 9001 with no writer online is a Galera problem, not a connection problem.
+And one false friend: 9001 with the writer hostgroup empty and every node offline is a Galera problem, not a connection problem.
 
 Source runbook status: draft.
 

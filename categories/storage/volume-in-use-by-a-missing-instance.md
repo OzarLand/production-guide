@@ -4,20 +4,20 @@
 
 # PG-14 · In-use by a VM that is gone?
 
-<img src="../../dist/pg-14-volume-in-use-by-a-missing-instance.png" alt="In-use by a VM that is gone? Operational lesson: A record is stale only when the hypervisor agrees. Check the host before the database." width="540">
+<img src="../../dist/pg-14-volume-in-use-by-a-missing-instance.png" alt="In-use by a VM that is gone? Operational lesson: A record is stale only when the hypervisor agrees. Check the host before you change the database." width="540">
 
-> **Operational lesson.** A record is stale only when the hypervisor agrees. Check the host before the database.
+> **Operational lesson.** A record is stale only when the hypervisor agrees. Check the host before you change the database.
 
 ## The memo as text
 
-**Situation.** The instance was deleted or evacuated, but its volume stays `in-use`: it can be neither deleted nor attached elsewhere. The data is intact. The risk is in the fix.
+**Situation.** The instance was deleted but its volume stays `in-use`, or it was evacuated and Cinder keeps an attachment for the old host. The data is intact. The risk is in the fix.
 
 **First checks** (read-only):
 
 1. **Every attachment of the volume**: `cinder attachment-list --all-tenants 1 --volume-id <volume>`
 2. **Does the instance still exist?**: `openstack server show <server> -c status -c OS-EXT-SRV-ATTR:host`
 3. **Which attachment Nova uses**: `openstack server volume list <server>`
-4. **Is the volume open on a host?**: `virsh domblklist <instance-name> (on each host named)`
+4. **Does a domain still use the volume?**: `virsh list --all, then virsh domblklist <domain>, on each host`
 
 **Think before acting:**
 
@@ -38,14 +38,14 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - **Post title:** A volume still in-use for an instance that no longer exists
 
 ```text
-The instance was deleted, or evacuated. Its volume is still "in-use", attached to something that is gone. It cannot be deleted. It cannot be attached anywhere else.
+The instance was deleted, or evacuated. Its volume is still "in-use", with an attachment that points at something gone. After a deletion it can be neither deleted nor attached anywhere else.
 
 The data is intact. The risk is entirely in the fix.
 
 An attachment record is stale only if the hypervisor agrees:
 → instance gone from Nova, no domain on its last host uses the volume: stale, left by the deletion
 → the attachment ID is the one Nova's server volume list shows: in use, keep it
-→ the instance runs on host B, the connector names host A: stale, left by the evacuation
+→ the instance runs on host B, the connector names host A, and the ID is not the one Nova uses: stale, left by the evacuation
 
 Forcing the volume back to "available" checks none of this. If a hypervisor still has it open, the next attach creates a second writer.
 

@@ -3,7 +3,7 @@ category: production-operations
 title: Restarting an agent on a compute?
 situation: >-
   You must restart libvirt or the Open vSwitch agent on a compute that runs instances. Will they stop, or
-  lose the network? One setting each decides.
+  lose the network? A setting or two each decides.
 
 diagram:
   type: compare
@@ -15,7 +15,7 @@ diagram:
       tone: ok
       points:
         - "`qemu` processes belong to the host: libvirtd re-attaches to them"
-        - "Only if the container has `pid_mode: host`"
+        - "Only if `pid_mode` and `cgroupns_mode` are `host`"
         - "Meanwhile: builds and migrations wait"
     - kicker: Open vSwitch agent
       title: Instances keep their network
@@ -31,10 +31,10 @@ checks:
     hint: openstack server list --all-projects --host <host> --long
   - label: No migration running
     hint: openstack server migration list --host <host> --status running
-  - label: "libvirt: host PID namespace?"
-    hint: "docker inspect nova_libvirt: PidMode must be host"
+  - label: "libvirt: host PID and cgroup ns?"
+    hint: "docker inspect nova_libvirt: PidMode and CgroupnsMode = host"
   - label: "OVS: are flows kept on restart?"
-    hint: grep -rn drop_flows_on_start /etc/neutron/
+    hint: "in the agent container: grep -r drop_flows_on_start /etc/neutron/"
 
 caution:
   - level: destructive
@@ -57,8 +57,9 @@ runbook:
 scope: >-
   Lab-verified on OpenStack 2026.1 with Kolla-Ansible defaults (nova_libvirt with pid_mode host, ML2/OVS with
   drop_flows_on_start at its default), and observed in production on an earlier release by the runbooks'
-  maintainer. The docker commands are Kolla-Ansible specific. OVN was not tested. If ovs-vswitchd itself does
-  not answer, restarting the agent will not help: that is another runbook.
+  maintainer. The docker commands are Kolla-Ansible specific. OVN was not tested. No output
+  from the grep, or False, means flows are kept. A packaged libvirtd (no container) was not tested. If
+  ovs-vswitchd itself does not answer, restarting the agent will not help.
 
 linkedin:
   title: "Restarting libvirt or the OVS agent: will the instances survive?"
@@ -67,11 +68,11 @@ linkedin:
 
     The answer comes from knowing which process actually carries the workload.
 
-    libvirtd: the qemu processes are processes of the host, not children locked inside the container. A new libvirtd re-attaches to them. It holds only if the container runs in the host's PID namespace.
+    libvirtd: the qemu processes are processes of the host, not children locked inside the container. A new libvirtd re-attaches to them. It holds only if the container runs in the host's PID and cgroup namespaces.
 
     Open vSwitch agent: it does not carry traffic, ovs-vswitchd does. The agent only programs flows, and they stay in place while it restarts. It holds only if drop_flows_on_start is False, the default.
 
     In both cases something does wait during the restart: builds, migrations, new ports, security group changes.
 
-    One setting each stands between "nobody noticed" and "every instance on the host stopped". Check it before, not after.
+    A setting or two stand between "nobody noticed" and "every instance on the host stopped or cut off". Check it before, not after.
   hashtags: [OpenStack, Nova, Neutron, ChangeManagement, CloudOperations, OzarLand]

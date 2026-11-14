@@ -4,9 +4,9 @@
 
 # PG-09 · Emptying a host for patching?
 
-<img src="../../dist/pg-09-emptying-a-host-for-maintenance.png" alt="Emptying a host for patching? Operational lesson: Once a host is patched, instances can move onto it, not back. Plan the order." width="540">
+<img src="../../dist/pg-09-emptying-a-host-for-maintenance.png" alt="Emptying a host for patching? Operational lesson: After a libvirt or QEMU patch, instances can move onto the host, not back. Plan the order." width="540">
 
-> **Operational lesson.** Once a host is patched, instances can move onto it, not back. Plan the order.
+> **Operational lesson.** After a libvirt or QEMU patch, instances can move onto the host, not back. Plan the order.
 
 ## The memo as text
 
@@ -21,7 +21,7 @@
 
 **Think before acting:**
 
-- ⚠️ **State-changing.** Live migration pauses the instance briefly at switchover. Migrate a few at once, not the whole host, and watch the destination.
+- ⚠️ **State-changing.** Live migration pauses the instance at switchover (1.8 to 8.6 s on a lab). Migrate a few at once, and watch the destination.
 - 🛑 **Destructive.** Cold migration and restarts stop the workload. Agree the downtime window with its owner first.
 
 ## Go deeper
@@ -31,7 +31,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Moving instances off a compute host for planned maintenance](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/moving-instances-off-a-host-for-maintenance.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 - [Live migration runs for a long time, then is aborted. The instance writes memory faster than it can be copied](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/live-migration-never-completes-or-times-out.md) · `draft` on 2026.1 · highest risk in the page: state-changing
 
-**Where this holds.** Derived from an operator's patching campaign on several hundred hosts; the disable, live migration and re-enable steps were lab-verified on OpenStack 2026.1, cold migration was not. Migration from a newer libvirt or QEMU to an older one is not supported. Constraints for PCI, SR-IOV, vGPU and CPU models depend on the release: check the Nova documentation of yours. A running instance keeps the old QEMU binary until it is migrated or restarted.
+**Where this holds.** Derived from a patching campaign on a platform of up to several hundred hosts (release not recorded). Disable, live block migration and re-enable were lab-verified on 2026.1; cold migration and shared-storage live migration were not. Migration from a newer libvirt or QEMU to an older one is not supported. Constraints for PCI, SR-IOV, vGPU and CPU models depend on the release: check the Nova documentation of yours. A running instance keeps the old QEMU binary until it is migrated or restarted.
 
 ## LinkedIn kit
 
@@ -44,8 +44,8 @@ A compute needs a reboot for a kernel or QEMU patch. "Just live-migrate everythi
 The operation depends on the instance:
 → shared storage or boot from volume: live migration
 → local disk: live block migration, the disk travels over the network
-→ memory changing faster than it copies: auto-converge or post-copy, else cold migration
-→ PCI passthrough, SR-IOV, vGPU: cold migration or restart, depending on your release
+→ memory changing faster than it copies: auto-converge or post-copy if enabled (off by default), else cold migration
+→ PCI passthrough, SR-IOV direct ports, vGPU: cold migration or restart, depending on your release
 
 And one trap of every patching campaign: migration from a newer libvirt/QEMU to an older one is not supported. Once a host is patched, instances can move onto it, but not back. The order of patching decides where instances can go.
 

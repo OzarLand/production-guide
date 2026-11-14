@@ -14,9 +14,9 @@
 
 **First checks** (read-only):
 
-1. **State, host, flavor, fault**: `openstack server show <id> -c status -c flavor -c fault`
+1. **State, task state, fault**: `openstack server show <id> -c status -c OS-EXT-STS:task_state -c fault`
 2. **The migration record**: `openstack server migration list --server <id>`
-3. **The failed step**: `openstack server event list <id>`
+3. **Its actions, then the failed step**: `openstack server event list <id>, then event show <id> <req-id>`
 4. **Are both computes up?**: `openstack compute service list --service nova-compute`
 
 **Think before acting:**
@@ -30,7 +30,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 
 - [Resize or cold migration not finished. Instance in VERIFY_RESIZE, stuck in RESIZE, or in ERROR after a failed resize](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/resize-stuck-in-verify-resize-or-failed.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Written from the Nova 2026.1 source and lab-verified with Kolla-Ansible, two computes and local qcow2 disks: the unconfirmed resize, a service dying part way, SSH between computes and a smaller disk were reproduced; a destination that cannot run the guest was not. Nova does not shrink disks, except a root disk booted from volume. With resize_confirm_window set, resizes are confirmed automatically and can no longer be reverted.
+**Where this holds.** Written from the Nova 2026.1 source and lab-verified with Kolla-Ansible, two computes and local qcow2 disks: the unconfirmed resize, a service dying part way, SSH between computes and a smaller disk were reproduced; a destination that cannot run the guest was not. Nova does not shrink disks, except a root disk booted from volume. With resize_confirm_window set, resizes older than the window are confirmed without the owner and can no longer be reverted.
 
 ## LinkedIn kit
 
@@ -38,7 +38,7 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - **Post title:** VERIFY_RESIZE is not a stuck state. It is a pending decision.
 
 ```text
-After a resize or a cold migration, an instance can sit in three states that look alike on a dashboard and mean very different things.
+After a resize or a cold migration, an instance can sit in three states that mean very different things.
 
 → VERIFY_RESIZE, no task state: the resize worked. It waits for a confirm or a revert, and can wait for days.
 → RESIZE, with a task state: the operation stopped part way. A service died, or a message was lost.

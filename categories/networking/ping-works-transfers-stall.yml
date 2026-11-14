@@ -14,7 +14,7 @@ diagram:
       tone: ok
       points:
         - Still fits the tunnel once encapsulated
-        - Monitoring stays green
+        - Most monitoring stays green
       verdict: Answered
     - kicker: Largest packet of the network
       title: "`ping -M do -s <MTU - 28>`"
@@ -35,7 +35,7 @@ checks:
   - label: Tunnel interface MTU, per compute
     hint: ip link show <tunnel-interface>
   - label: The underlay between hosts
-    hint: the same ping between the tunnel addresses of two hosts
+    hint: ping -M do -s <tunnel MTU-28> -I <local-ip> <remote-local-ip>
 
 caution:
   - level: state-changing
@@ -44,8 +44,7 @@ caution:
       console if in doubt.
   - level: state-changing
     text: >-
-      Lowering `global_physnet_mtu` changes every tenant network. Instances pick it up only at their next
-      DHCP renewal or reboot.
+      Lowering `global_physnet_mtu` affects new networks only: existing ones need `network set --mtu`.
 
 lesson: A green ping proves small packets pass. Test the largest one the network promises.
 
@@ -58,7 +57,7 @@ scope: >-
   Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS, VXLAN over an IPv4 underlay, for a tunnel
   interface whose MTU was lowered on one compute. A switch on the path dropping large frames, a platform-wide
   mismatch and an IPv6 underlay were not reproduced. Neutron never re-reads the MTU of the hosts after
-  deployment. OVN was not tested.
+  deployment. Instances pick up a new MTU at DHCP renewal or reboot. The global_physnet_mtu change was not run on the lab. OVN was not tested.
 
 linkedin:
   title: "Ping works, large transfers stall: test the largest packet"

@@ -4,9 +4,9 @@
 
 # PG-11 · Reachable inside, not outside?
 
-<img src="../../dist/pg-11-unreachable-from-outside.png" alt="Reachable inside, not outside? Operational lesson: Each check rules out one cause. Go through them in order, from the outside in." width="540">
+<img src="../../dist/pg-11-unreachable-from-outside.png" alt="Reachable inside, not outside? Operational lesson: Each check rules out one cause. Go through them in order." width="540">
 
-> **Operational lesson.** Each check rules out one cause. Go through them in order, from the outside in.
+> **Operational lesson.** Each check rules out one cause. Go through them in order.
 
 ## The memo as text
 
@@ -17,7 +17,7 @@
 1. **Port and its security groups**: `openstack port show <port> -c security_group_ids`
 2. **Ingress rules of each group**: `openstack security group rule list --ingress <group>`
 3. **A floating IP on this port?**: `openstack floating ip list --port <port>`
-4. **Router gateway and interfaces**: `openstack router show <router> -c external_gateway_info`
+4. **Router external gateway**: `openstack router show <router> -c external_gateway_info`
 
 **Think before acting:**
 
@@ -31,20 +31,20 @@ This memo is a memory aid. The procedure, with every command, its risk warning a
 - [Instance has its address and metadata, but is unreachable from outside](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/instance-unreachable-from-outside.md) · `lab-verified` on 2026.1 · highest risk in the page: state-changing
 - [L3 agent dead, instances still reachable, router not moved](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/router-stuck-on-dead-l3-agent.md) · `lab-verified` on 2026.1 · highest risk in the page: destructive
 
-**Where this holds.** Written from the Neutron 2026.1 documentation and lab-verified on ML2/OVS with the L3 agent and a legacy router, for the security group and floating IP causes. The OVN steps, the router missing on its node, the guest and the external network causes were not run on a lab. DVR, BGP-announced floating IPs and IPv6 without NAT are not covered.
+**Where this holds.** Written from the Neutron 2026.1 documentation and lab-verified on ML2/OVS with the L3 agent and a legacy router, for the security group and floating IP causes. The OVN steps, the router missing on its node, the guest and the external network causes were not run on a lab. DVR, BGP-announced floating IPs and IPv6 without NAT, and provider networks attached directly to instances are not covered.
 
 ## LinkedIn kit
 
 - **Image:** [`dist/pg-11-unreachable-from-outside.png`](../../dist/pg-11-unreachable-from-outside.png) (1080 × 1350)
-- **Post title:** Reachable from inside, not from outside: walk the path in order
+- **Post title:** Reachable from inside, not from outside: four checks, in order
 
 ```text
 The instance got its address and its metadata. A neighbour in the same network reaches it. From outside: timeout.
 
-This is rarely a mystery. It is four records to check, from the outside in:
+This is rarely a mystery. It is four things to check, in order:
 1. Security group: is there an ingress rule for this protocol, port and source?
 2. Floating IP: is it on this port, and on this fixed address?
-3. Router: an interface on the subnet, and an external gateway?
+3. Router: an interface and a gateway, and is it really live on its node?
 4. The guest: its own firewall, a service actually listening?
 
 Most cases end at 1 or 2.

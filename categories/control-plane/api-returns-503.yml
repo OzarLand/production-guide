@@ -16,21 +16,21 @@ diagram:
       tone: stop
     - see: "Servers DOWN, `L7TOUT` or `L7STS`"
       means: Up, but its check fails
-      sub: Stuck on a dependency. Fix that
+      sub: Stuck on a dependency, or overloaded
       tone: warn
     - see: One server DOWN, the others UP
       means: One controller
       sub: No visible error, less capacity
       tone: mute
-    - see: The VIP on no node, or on two
-      means: keepalived, not a backend
-      sub: Check failing, or VRRP adverts lost
+    - see: Refused or timeout, the VIP on no node or on two
+      means: The front door itself
+      sub: HAProxy down, or VRRP adverts lost
       tone: stop
 
 checks:
   - label: Which node holds the VIP?
     hint: "ip -brief address show dev <api-interface> (exactly one)"
-  - label: HAProxy and keepalived running?
+  - label: HAProxy, ProxySQL, keepalived running?
     hint: container status, on each load balancer node
   - label: State of every backend server
     hint: '"show stat" on the HAProxy stats socket'
@@ -69,9 +69,9 @@ linkedin:
 
     What HAProxy shows tells you where to go next:
     → every server DOWN with L4CON: the service is down on every controller. Its own log says why.
-    → servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency.
+    → servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency, or overloaded.
     → one server DOWN, the others UP: one controller. Users see nothing.
-    → the VIP on no node, or on two: keepalived, not a backend.
+    → no 503 but a refused connection or a timeout, with the VIP on no node or on two: the front door itself. HAProxy down everywhere, or VRRP adverts lost.
 
     The tempting fix is to restart things at the front door. But restarting a service whose database is unreachable only loses the requests in flight.
 
