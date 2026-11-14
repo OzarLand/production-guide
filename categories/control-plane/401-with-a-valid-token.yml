@@ -1,0 +1,81 @@
+id: PG-27
+category: control-plane
+title: 401 with a valid token?
+situation: >-
+  `openstack token issue` works, then service calls fail with 401, often every other time. The Keystone
+  node asked to validate the token cannot read it, or finds it expired.
+
+diagram:
+  type: compare
+  caption: Two causes that do not hit the same tokens
+  columns:
+    - kicker: Fernet keys differ
+      title: Breaks older tokens
+      icon: key-round
+      tone: stop
+      points:
+        - Only tokens older than the cache (10 min by default)
+        - A fresh token validates everywhere
+      verdict: Could not recognize Fernet token
+    - kicker: A clock is off
+      title: Breaks fresh tokens too
+      icon: clock
+      tone: warn
+      points:
+        - Tokens look expired or revoked to one node
+        - Keys are identical on every node
+      verdict: Failed to validate token
+  note: >-
+    Different key lists alone are not a fault. The test: is each node's primary key in every other node's
+    set?
+
+checks:
+  - label: Key checksums, on every node
+    hint: md5sum /etc/keystone/fernet-keys/*
+  - label: Is key distribution healthy?
+    hint: "Kolla-Ansible: health of the keystone_fernet container"
+  - label: Which node rejects an aged token?
+    hint: validate one token against each Keystone backend
+  - label: Clocks of the Keystone nodes
+    hint: chronyc tracking ; date -u
+
+caution:
+  - level: destructive
+    text: >-
+      Pushing one node's keys to the others invalidates live tokens the others issued. Choose the source by
+      checksum, not by key number.
+  - level: know
+    text: >-
+      A test with a fresh token proves nothing: every node answers it from the shared cache, without
+      decrypting it.
+
+lesson: A fresh token hides the problem. Test with one older than the token cache.
+
+runbook:
+  path: recovery/keystone-401-for-every-request-fernet-keys-or-clock.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - diagnostics/expired-certificates-and-fernet-keys-break-every-api-call.md
+
+scope: >-
+  Written from the Keystone 2026.1 source and lab-verified on Kolla-Ansible with three controllers, where
+  Keystone caches tokens in memcached shared by all nodes (600 s by default) and the keystone_fernet
+  containers rotate and push the keys. Other deployments distribute keys differently. Intermittent failure
+  is common but not the rule. If keys were replaced on every node, every client must simply authenticate
+  again.
+
+linkedin:
+  title: "401 with a token that should be valid: the fresh token is lying to you"
+  caption: |
+    openstack token issue works. The next command fails with 401. Then works. Then fails.
+
+    Behind a load balancer, that pattern means one Keystone node cannot validate tokens the others issued. Two usual reasons, and they do not hit the same tokens:
+
+    → Fernet keys differ between nodes: it breaks tokens older than the token cache, 10 minutes by default. Long-running clients, scripts, Horizon sessions.
+    → A clock is off on one node: it breaks fresh tokens too.
+
+    Here is the trap. Keystone caches every token it issues in a cache shared by all nodes. For 10 minutes, any node answers from the cache, without decrypting anything. So your test with a brand new token passes on every node, with diverged keys.
+
+    Test with a token older than the cache. And compare key checksums across nodes, not key numbers.
+  hashtags: [OpenStack, Keystone, Authentication, ControlPlane, CloudOperations, OzarLand]

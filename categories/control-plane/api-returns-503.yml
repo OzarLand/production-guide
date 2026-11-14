@@ -1,0 +1,79 @@
+id: PG-26
+category: control-plane
+title: The API answers 503?
+situation: >-
+  "No server is available to handle this request" comes from HAProxy itself, not from the service. No
+  backend of that API passes its health check.
+
+diagram:
+  type: branches
+  head: [HAProxy and keepalived show, The cause is]
+  split: 50
+  rows:
+    - see: "Every server of a backend DOWN, `L4CON`"
+      means: Service down everywhere
+      sub: Its own log says why it exited
+      tone: stop
+    - see: "Servers DOWN, `L7TOUT` or `L7STS`"
+      means: Up, but its check fails
+      sub: Stuck on a dependency. Fix that
+      tone: warn
+    - see: One server DOWN, the others UP
+      means: One controller
+      sub: No visible error, less capacity
+      tone: mute
+    - see: The VIP on no node, or on two
+      means: keepalived, not a backend
+      sub: Check failing, or VRRP adverts lost
+      tone: stop
+
+checks:
+  - label: Which node holds the VIP?
+    hint: "ip -brief address show dev <api-interface> (exactly one)"
+  - label: HAProxy and keepalived running?
+    hint: container status, on each load balancer node
+  - label: State of every backend server
+    hint: '"show stat" on the HAProxy stats socket'
+  - label: The health check, by hand
+    hint: curl http://<controller>:<port>/healthcheck
+
+caution:
+  - level: avoid
+    text: >-
+      Restarting a service while its database is unreachable. It only loses the requests in flight: fix the
+      dependency, not HAProxy.
+  - level: state-changing
+    text: >-
+      Restarting HAProxy on the node that holds the VIP cuts every API connection, and the VIP may move.
+
+lesson: A 503 from HAProxy is a messenger. Find out why the backends fail their check.
+
+runbook:
+  path: recovery/api-returns-503-haproxy-backend-down-or-vip-flapping.md
+  status: lab-verified
+  release: "2026.1"
+
+scope: >-
+  Specific to Kolla-Ansible 2026.1, where keepalived holds a VIP and HAProxy checks each API backend (GET
+  /healthcheck, or GET / for Nova and Placement, expecting 200). Lab-verified; HAProxy down on every node and
+  a virtual router ID collision were not run. A 503 on Keystone breaks every command. Running instances keep
+  running: their data path does not go through HAProxy, but instances booting at that moment can miss their
+  metadata.
+
+linkedin:
+  title: "503 from the API: HAProxy is the messenger, not the cause"
+  caption: |
+    "503 Service Unavailable: No server is available to handle this request."
+
+    That sentence does not come from Nova or Keystone. It comes from HAProxy, and it means one precise thing: no backend of that API is passing its health check.
+
+    What HAProxy shows tells you where to go next:
+    → every server DOWN with L4CON: the service is down on every controller. Its own log says why.
+    → servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency.
+    → one server DOWN, the others UP: one controller. Users see nothing.
+    → the VIP on no node, or on two: keepalived, not a backend.
+
+    The tempting fix is to restart things at the front door. But restarting a service whose database is unreachable only loses the requests in flight.
+
+    Running instances keep running through all of it.
+  hashtags: [OpenStack, HAProxy, ControlPlane, HighAvailability, CloudOperations, OzarLand]

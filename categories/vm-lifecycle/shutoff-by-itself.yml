@@ -1,0 +1,84 @@
+id: PG-21
+category: vm-lifecycle
+title: SHUTOFF by itself?
+situation: >-
+  An `ACTIVE` instance is now `SHUTOFF`, with a `stop` action nobody requested. The compute ran out of
+  memory and its kernel killed the QEMU process.
+
+diagram:
+  type: chain
+  caption: Who really stopped the instance
+  nodes:
+    - label: The host
+      sub: Runs out of memory
+      icon: cpu
+      tone: stop
+      badge: none
+    - label: Kernel OOM killer
+      sub: Kills a `qemu` process
+      icon: octagon-x
+      tone: stop
+      badge: none
+    - label: libvirt
+      sub: "Guest stopped, `reason=crashed`"
+      icon: activity
+      tone: mute
+    - label: nova-compute
+      sub: Calls the stop API itself
+      icon: server
+      tone: mute
+  note: >-
+    Nova only aligns its record with the hypervisor: that is the `stop` in the instance's actions. It does
+    not restart the guest.
+
+checks:
+  - label: The stop nobody asked for
+    hint: openstack server event list <server-id>
+  - label: Did the kernel kill QEMU?
+    hint: dmesg -T | grep -E 'oom-killer|Killed process'
+  - label: Memory of the host now
+    hint: free -m (on the instance's compute)
+  - label: What nova-compute logged
+    hint: grep "shutdown by itself" nova-compute.log
+
+caution:
+  - level: state-changing
+    text: >-
+      Starting it again boots it like after a power loss. Check first that the compute has free memory, or
+      the next kill may hit another instance.
+  - level: know
+    text: >-
+      `reserved_host_memory_mb` defaults to 512 MB. The scheduler fills a compute up to an inventory the
+      host may not be able to honour.
+
+lesson: The scheduler trusts the inventory. Make it match what the host really uses.
+
+runbook:
+  path: lifecycle/instance-shut-off-by-host-oom-killer.md
+  status: draft
+  release: "2026.1"
+
+scope: >-
+  The runbook is a draft, written from the Nova 2026.1, kernel and libvirt sources. On a lab only a
+  cgroup-level OOM of one guest was reproduced; a host-wide OOM and memory overcommit were not. "Memory cgroup
+  out of memory" in the kernel log means a cgroup limit was reached, not the host's memory. No "Killed
+  process" line at that time means QEMU stopped for another reason. An out-of-memory inside the guest is a
+  different problem.
+
+linkedin:
+  title: "An instance went SHUTOFF by itself. Nova did not stop it: the kernel did."
+  caption: |
+    An instance that was ACTIVE is SHUTOFF. Its owner did not stop it. And yet its action list shows a "stop".
+
+    That stop was made by Nova itself, after the fact. The real sequence:
+    → the compute ran out of memory
+    → the kernel's OOM killer killed a QEMU process
+    → libvirt reported the guest as stopped
+    → nova-compute aligned its record by calling the stop API
+
+    Nova does not restart the guest. It stays SHUTOFF until someone starts it, and it boots like after a power loss.
+
+    The usual root cause is not the instance. It is the inventory: reserved_host_memory_mb left at its 512 MB default on a host whose own services use several GB. The scheduler fills the compute up to a number the host cannot honour.
+
+    Source runbook status: draft. Read its limits before acting.
+  hashtags: [OpenStack, Nova, Linux, CapacityPlanning, CloudOperations, OzarLand]

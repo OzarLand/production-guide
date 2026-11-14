@@ -148,7 +148,7 @@ The budgets are necessary, not sufficient: the build also renders the memo and f
 
 ## The collection at a glance
 
-![The first twenty memos side by side](dist/contact-sheet.png)
+![The collection side by side](dist/contact-sheet.png)
 
 ## What a memo never has
 

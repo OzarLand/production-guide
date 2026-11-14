@@ -7,3 +7,5 @@
 - **PG-10** [ACTIVE, but no IP address?](active-but-no-ip.md): ACTIVE means Nova did its job. It says nothing about the network of the guest.
 - **PG-11** [Reachable inside, not outside?](unreachable-from-outside.md): Each check rules out one cause. Go through them in order, from the outside in.
 - **PG-12** [Ping works, big transfers stall?](ping-works-transfers-stall.md): A green ping proves small packets pass. Test the largest one the network promises.
+- **PG-24** [One compute lost its network?](whole-compute-lost-network.md): Monitoring built on Nova states cannot see a data-plane outage.
+- **PG-25** [Security group rule has no effect?](security-group-rule-has-no-effect.md): Groups add up, on a default deny. Read the rules before you blame the agent.

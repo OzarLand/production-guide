@@ -1,0 +1,80 @@
+id: PG-25
+category: networking
+title: Security group rule has no effect?
+situation: >-
+  A rule was added and the traffic is still blocked. Or a rule was removed and the traffic still passes.
+  The instance is up, and other traffic works.
+
+diagram:
+  type: branches
+  head: [What you find, Why]
+  split: 54
+  rows:
+    - see: The rule is on another group, or does not match the traffic
+      means: The wrong rule
+      sub: Direction, ethertype, port, remote
+      tone: warn
+    - see: "`port_security_enabled` is `False` on the port"
+      means: No rule applies
+      sub: Everything passes
+      tone: stop
+    - see: The agent or ovn-controller of the compute is dead
+      means: Not applied yet
+      sub: The compute still holds the old rules
+      tone: warn
+    - see: "Both ports use the `default` group"
+      means: Allowed by design
+      sub: "`default` admits its own members"
+      tone: mute
+
+checks:
+  - label: "Port: groups and port security"
+    hint: openstack port show <port> -c security_group_ids
+  - label: The rules of each group
+    hint: openstack security group rule list <group>
+  - label: Agents on the compute
+    hint: openstack network agent list --host <compute>
+  - label: Read the rule against the traffic
+    hint: "ingress = to the instance ; IPv4 or IPv6 ; remote"
+
+caution:
+  - level: state-changing
+    text: >-
+      A rule change reaches every port that uses the group, in every instance of the project that has it.
+  - level: state-changing
+    text: >-
+      Turning port security back on drops at once whatever the groups do not allow. Check allowed address
+      pairs first.
+
+lesson: Groups add up, on a default deny. Read the rules before you blame the agent.
+
+runbook:
+  path: networking/security-group-rules-not-applied.md
+  status: draft
+  release: "2026.1"
+  also:
+    - networking/instance-unreachable-from-outside.md
+
+scope: >-
+  The runbook is a draft, written from the Neutron 2026.1 documentation and source. The wrong rule, port
+  security off and a dead agent were reproduced on a Kolla-Ansible all-in-one with ML2/OVS and the iptables
+  hybrid firewall driver. ML2/OVN and the native OVS firewall driver were not run on a lab. The traffic can
+  also be filtered elsewhere (guest firewall, router), or let through by an allowed address pair or a second
+  port.
+
+linkedin:
+  title: "A security group rule that changes nothing: four things to check"
+  caption: |
+    You add a rule. The port stays closed. Or you remove one, and the traffic still gets through.
+
+    Before blaming the agent, remember how security groups work: allow rules only, on a default deny, and the groups on a port add up. Then check four things.
+
+    → The rule is on a group the port does not use, or it does not match: direction, ethertype (an IPv4 rule for IPv6 traffic), port range, or a remote group the traffic does not come from.
+    → Port security is off on the port: no rule applies at all, everything passes.
+    → The agent on the compute is dead: the rule exists in the API, the compute still holds the old ones.
+    → Both instances are in "default": that group admits its own members, by design.
+
+    Three of these four are not a platform fault.
+
+    Source runbook status: draft.
+  hashtags: [OpenStack, Neutron, SecurityGroups, Networking, CloudOperations, OzarLand]

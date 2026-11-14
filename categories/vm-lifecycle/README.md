@@ -9,3 +9,5 @@
 - **PG-03** [Exceeded maximum number of retries?](max-retries-exceeded.md): The fault is a summary. The cause is in the log of each compute that tried.
 - **PG-04** [VM stuck in deleting?](vm-stuck-in-deleting.md): A delete has two paths. Know which one Nova will take before you retry.
 - **PG-05** [ACTIVE in Nova, frozen for users?](active-but-frozen.md): Nova does not watch the disk. Monitor the instance store and the power state.
+- **PG-21** [SHUTOFF by itself?](shutoff-by-itself.md): The scheduler trusts the inventory. Make it match what the host really uses.
+- **PG-22** [Resize not finished?](resize-not-finished.md): VERIFY_RESIZE is not stuck. It waits for a decision only the owner can make.

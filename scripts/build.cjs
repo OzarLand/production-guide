@@ -114,6 +114,25 @@ function catalog(memos) {
   return out.join('\n');
 }
 
+// Runbooks that no memo is written from or cites: the next memos to write.
+function candidates(memos, dir) {
+  const used = new Set(memos.flatMap((m) => [m.runbook.path, ...(m.runbook.also || [])]));
+  const rows = [];
+  for (const folder of fs.readdirSync(dir).sort()) {
+    const d = path.join(dir, folder);
+    if (folder.startsWith('.') || ['logs', 'templates'].includes(folder) || !fs.statSync(d).isDirectory()) continue;
+    for (const f of fs.readdirSync(d).sort()) {
+      const p = `${folder}/${f}`;
+      if (!f.endsWith('.md') || f === 'README.md' || used.has(p)) continue;
+      const t = fs.readFileSync(path.join(d, f), 'utf8');
+      const title = (/^title:\s*(.+)$/m.exec(t) || [, p])[1].replace(/^["']|["']$/g, '').replace(/\|/g, '/');
+      const status = (/^status:\s*(\S+)/m.exec(t) || [, '?'])[1];
+      rows.push(`| [${title}](${BLOB + p}) | \`${status}\` |`);
+    }
+  }
+  return rows.length ? ['| Runbook | Status |', '|---|---|', ...rows].join('\n') : 'None at the moment: every runbook has its memo.';
+}
+
 function categoryIndex(cat, memos) {
   const list = memos.filter((m) => m.category === cat);
   return [
@@ -223,6 +242,7 @@ function measure() {
   }
   const cs = getComputedStyle(body);
   const free = Math.round(body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - used);
+  if (free < 0) problems.push(`the content is ${-free}px too tall: shorten the situation, the diagram or the cautions`);
   return { problems, free };
 }
 
@@ -300,6 +320,7 @@ async function contactSheet(memos) {
   const readme = path.join(ROOT, 'README.md');
   if (fs.existsSync(readme))
     fs.writeFileSync(readme, fs.readFileSync(readme, 'utf8').replace(/badge\/memos-\d+-informational\.svg" alt="\d+ memos"/, `badge/memos-${memos.length}-informational.svg" alt="${memos.length} memos"`));
+  if (runbooks) replaceBlock('README.md', 'candidates', candidates(memos, runbooks));
   replaceBlock('README.md', 'count', `**${memos.length} memos** across ${new Set(memos.map((m) => m.category)).size} categories.`);
   if (!only && scale === 1) await contactSheet(memos);
   errors = checkLocalLinks();

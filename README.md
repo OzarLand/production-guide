@@ -7,7 +7,7 @@
 **A visual memo for OpenStack operators: one operational lesson per page, to remember, apply and share.**
 
 <p>
-  <img src="https://img.shields.io/badge/memos-20-informational.svg" alt="20 memos">
+  <img src="https://img.shields.io/badge/memos-28-informational.svg" alt="28 memos">
   <img src="https://img.shields.io/badge/format-1080%C3%971350-0e1a2b.svg" alt="Format: 1080 × 1350">
   <img src="https://img.shields.io/badge/OpenStack-2026.1-ED1944.svg" alt="OpenStack 2026.1">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
@@ -66,15 +66,16 @@ Colour means one thing only, the risk of an action, with the same vocabulary as 
 
 > [!WARNING]
 > A memo is a memory aid, not a procedure. It is as reliable as the runbook behind it, and it says how reliable
-> that is: the pill at the bottom right shows the runbook's status and release. Today every source runbook is
-> `lab-verified` on OpenStack 2026.1, mostly with Kolla-Ansible and ML2/OVS, and none has been confirmed on a
-> production platform by an operator other than its author. Each memo's page has a **Where this holds** paragraph:
+> that is: the pill at the bottom right shows the runbook's status and release. Today the source runbooks are
+> `lab-verified` or `draft` on OpenStack 2026.1, mostly with Kolla-Ansible and ML2/OVS, and none has been confirmed
+> on a production platform by an operator other than its author. A `draft` runbook's commands were not run by anyone
+> but its author. Each memo's page has a **Where this holds** paragraph:
 > read it, then read the runbook, before any ⚠️ or 🛑 action.
 
 ## Catalog
 
 <!-- count:start -->
-**20 memos** across 6 categories.
+**28 memos** across 6 categories.
 <!-- count:end -->
 Click a memo for its page: the image, the same content as text, the runbook links and the LinkedIn kit.
 
@@ -88,6 +89,8 @@ Click a memo for its page: the image, the same content as text, the runbook link
 | <a href="categories/vm-lifecycle/max-retries-exceeded.md"><img src="dist/pg-03-max-retries-exceeded.png" alt="Exceeded maximum number of retries?" width="150"></a> | **PG-03**<br>[Exceeded maximum number of retries?](categories/vm-lifecycle/max-retries-exceeded.md) | The fault is a summary. The cause is in the log of each compute that tried. | [scheduling/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/build-fails-exceeded-maximum-number-of-retries.md)<br>`lab-verified` |
 | <a href="categories/vm-lifecycle/vm-stuck-in-deleting.md"><img src="dist/pg-04-vm-stuck-in-deleting.png" alt="VM stuck in deleting?" width="150"></a> | **PG-04**<br>[VM stuck in deleting?](categories/vm-lifecycle/vm-stuck-in-deleting.md) | A delete has two paths. Know which one Nova will take before you retry. | [lifecycle/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/instance-stuck-in-deleting.md)<br>`lab-verified` |
 | <a href="categories/vm-lifecycle/active-but-frozen.md"><img src="dist/pg-05-active-but-frozen.png" alt="ACTIVE in Nova, frozen for users?" width="150"></a> | **PG-05**<br>[ACTIVE in Nova, frozen for users?](categories/vm-lifecycle/active-but-frozen.md) | Nova does not watch the disk. Monitor the instance store and the power state. | [lifecycle/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/compute-disk-full-instance-paused.md)<br>`lab-verified` |
+| <a href="categories/vm-lifecycle/shutoff-by-itself.md"><img src="dist/pg-21-shutoff-by-itself.png" alt="SHUTOFF by itself?" width="150"></a> | **PG-21**<br>[SHUTOFF by itself?](categories/vm-lifecycle/shutoff-by-itself.md) | The scheduler trusts the inventory. Make it match what the host really uses. | [lifecycle/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/instance-shut-off-by-host-oom-killer.md)<br>`draft` |
+| <a href="categories/vm-lifecycle/resize-not-finished.md"><img src="dist/pg-22-resize-not-finished.png" alt="Resize not finished?" width="150"></a> | **PG-22**<br>[Resize not finished?](categories/vm-lifecycle/resize-not-finished.md) | VERIFY_RESIZE is not stuck. It waits for a decision only the owner can make. | [lifecycle/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/resize-stuck-in-verify-resize-or-failed.md)<br>`lab-verified` |
 
 ### Compute operations
 
@@ -97,6 +100,7 @@ Click a memo for its page: the image, the same content as text, the runbook link
 | <a href="categories/compute/fence-before-evacuate.md"><img src="dist/pg-07-fence-before-evacuate.png" alt="Fence before you evacuate" width="150"></a> | **PG-07**<br>[Fence before you evacuate](categories/compute/fence-before-evacuate.md) | The precondition for evacuation is fencing, not a missing heartbeat. | [recovery/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/compute-host-failure-fence-before-evacuate.md)<br>`lab-verified` |
 | <a href="categories/compute/disabled-or-down.md"><img src="dist/pg-08-disabled-or-down.png" alt="Disabled or down? Two fields" width="150"></a> | **PG-08**<br>[Disabled or down? Two fields](categories/compute/disabled-or-down.md) | Disabled is a scheduling decision. Down is a belief about liveness. | [scheduling/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/compute-service-disabled-or-forced-down.md)<br>`lab-verified` |
 | <a href="categories/compute/emptying-a-host-for-maintenance.md"><img src="dist/pg-09-emptying-a-host-for-maintenance.png" alt="Emptying a host for patching?" width="150"></a> | **PG-09**<br>[Emptying a host for patching?](categories/compute/emptying-a-host-for-maintenance.md) | Once a host is patched, instances can move onto it, not back. Plan the order. | [migration/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/moving-instances-off-a-host-for-maintenance.md)<br>`lab-verified` |
+| <a href="categories/compute/live-migration-never-completes.md"><img src="dist/pg-23-live-migration-never-completes.png" alt="Live migration never completes?" width="150"></a> | **PG-23**<br>[Live migration never completes?](categories/compute/live-migration-never-completes.md) | Watch whether the remaining memory goes down. If it hovers, waiting will not help. | [migration/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/live-migration-never-completes-or-times-out.md)<br>`draft` |
 
 ### Networking
 
@@ -105,6 +109,8 @@ Click a memo for its page: the image, the same content as text, the runbook link
 | <a href="categories/networking/active-but-no-ip.md"><img src="dist/pg-10-active-but-no-ip.png" alt="ACTIVE, but no IP address?" width="150"></a> | **PG-10**<br>[ACTIVE, but no IP address?](categories/networking/active-but-no-ip.md) | ACTIVE means Nova did its job. It says nothing about the network of the guest. | [networking/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/new-instance-gets-no-ip-dhcp-agents-down.md)<br>`lab-verified` |
 | <a href="categories/networking/unreachable-from-outside.md"><img src="dist/pg-11-unreachable-from-outside.png" alt="Reachable inside, not outside?" width="150"></a> | **PG-11**<br>[Reachable inside, not outside?](categories/networking/unreachable-from-outside.md) | Each check rules out one cause. Go through them in order, from the outside in. | [networking/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/instance-unreachable-from-outside.md)<br>`lab-verified` |
 | <a href="categories/networking/ping-works-transfers-stall.md"><img src="dist/pg-12-ping-works-transfers-stall.png" alt="Ping works, big transfers stall?" width="150"></a> | **PG-12**<br>[Ping works, big transfers stall?](categories/networking/ping-works-transfers-stall.md) | A green ping proves small packets pass. Test the largest one the network promises. | [networking/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/tunnel-mtu-mismatch-large-packets-dropped.md)<br>`lab-verified` |
+| <a href="categories/networking/whole-compute-lost-network.md"><img src="dist/pg-24-whole-compute-lost-network.png" alt="One compute lost its network?" width="150"></a> | **PG-24**<br>[One compute lost its network?](categories/networking/whole-compute-lost-network.md) | Monitoring built on Nova states cannot see a data-plane outage. | [networking/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/ovs-vswitchd-down-on-compute.md)<br>`lab-verified` |
+| <a href="categories/networking/security-group-rule-has-no-effect.md"><img src="dist/pg-25-security-group-rule-has-no-effect.png" alt="Security group rule has no effect?" width="150"></a> | **PG-25**<br>[Security group rule has no effect?](categories/networking/security-group-rule-has-no-effect.md) | Groups add up, on a default deny. Read the rules before you blame the agent. | [networking/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/security-group-rules-not-applied.md)<br>`draft` |
 
 ### Storage
 
@@ -120,6 +126,9 @@ Click a memo for its page: the image, the same content as text, the runbook link
 | <a href="categories/control-plane/control-plane-down.md"><img src="dist/pg-15-control-plane-down.png" alt="Control plane down: what runs?" width="150"></a> | **PG-15**<br>[Control plane down: what runs?](categories/control-plane/control-plane-down.md) | A control-plane outage is not a workload outage. Protect what runs, then repair. | [diagnostics/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/diagnostics/control-plane-down-what-still-works-for-instances.md)<br>`lab-verified` |
 | <a href="categories/control-plane/rpc-timeouts-everywhere.md"><img src="dist/pg-16-rpc-timeouts-everywhere.png" alt="MessagingTimeout everywhere?" width="150"></a> | **PG-16**<br>[MessagingTimeout everywhere?](categories/control-plane/rpc-timeouts-everywhere.md) | Computes reported down are a symptom here. Read every RabbitMQ node before you reset anything. | [recovery/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/rabbitmq-partition-or-alarm-rpc-timeouts.md)<br>`lab-verified` |
 | <a href="categories/control-plane/galera-lost-quorum.md"><img src="dist/pg-17-galera-lost-quorum.png" alt="APIs fail on database errors?" width="150"></a> | **PG-17**<br>[APIs fail on database errors?](categories/control-plane/galera-lost-quorum.md) | The data is at risk only during the recovery. Compare every node before choosing one. | [recovery/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/galera-cluster-lost-quorum-database-unavailable.md)<br>`lab-verified` |
+| <a href="categories/control-plane/api-returns-503.md"><img src="dist/pg-26-api-returns-503.png" alt="The API answers 503?" width="150"></a> | **PG-26**<br>[The API answers 503?](categories/control-plane/api-returns-503.md) | A 503 from HAProxy is a messenger. Find out why the backends fail their check. | [recovery/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/api-returns-503-haproxy-backend-down-or-vip-flapping.md)<br>`lab-verified` |
+| <a href="categories/control-plane/401-with-a-valid-token.md"><img src="dist/pg-27-401-with-a-valid-token.png" alt="401 with a valid token?" width="150"></a> | **PG-27**<br>[401 with a valid token?](categories/control-plane/401-with-a-valid-token.md) | A fresh token hides the problem. Test with one older than the token cache. | [recovery/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/keystone-401-for-every-request-fernet-keys-or-clock.md)<br>`lab-verified` |
+| <a href="categories/control-plane/database-connections-exhausted.md"><img src="dist/pg-28-database-connections-exhausted.png" alt="Out of database connections?" width="150"></a> | **PG-28**<br>[Out of database connections?](categories/control-plane/database-connections-exhausted.md) | Three limits, three messages. The message tells you which layer ran out. | [recovery/…](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/database-too-many-connections-or-pool-exhausted.md)<br>`draft` |
 
 ### Production operations
 
@@ -149,18 +158,29 @@ collection and left out, rather than filled with guesses.
 | CPU overcommitment, hypervisor out of resources | No runbook. Allocation ratios appear only as a cause in PG-02 |
 | Before applying a configuration change, before patching: the general checklist | No runbook. PG-09 and PG-18 cover two specific cases |
 
-**A source exists, a memo does not.** Good candidates for a first contribution:
+**A source exists, a memo does not.** Good candidates for a first contribution. This list is generated: it is every
+runbook, outside the `logs/` reading guides, that no memo is written from or cites.
 
-| Topic | Runbook | Status |
-|---|---|---|
-| Instance goes `SHUTOFF` by itself (host OOM killer) | [lifecycle/instance-shut-off-by-host-oom-killer.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/instance-shut-off-by-host-oom-killer.md) | `draft` |
-| A security group rule has no effect | [networking/security-group-rules-not-applied.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/security-group-rules-not-applied.md) | `draft` |
-| Live migration never completes | [migration/live-migration-never-completes-or-times-out.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/live-migration-never-completes-or-times-out.md) | `draft` |
-| 401 for tokens that should be valid (Fernet keys, clock) | [recovery/keystone-401-for-every-request-fernet-keys-or-clock.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/keystone-401-for-every-request-fernet-keys-or-clock.md) | `lab-verified` |
-| API returns 503, HAProxy backend down, VIP flapping | [recovery/api-returns-503-haproxy-backend-down-or-vip-flapping.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/api-returns-503-haproxy-backend-down-or-vip-flapping.md) | `lab-verified` |
-| Every instance of one compute loses the network (ovs-vswitchd down) | [networking/ovs-vswitchd-down-on-compute.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/ovs-vswitchd-down-on-compute.md) | `lab-verified` |
-| Resize stuck in `VERIFY_RESIZE` | [lifecycle/resize-stuck-in-verify-resize-or-failed.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/resize-stuck-in-verify-resize-or-failed.md) | `lab-verified` |
-| Database connections exhausted | [recovery/database-too-many-connections-or-pool-exhausted.md](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/database-too-many-connections-or-pool-exhausted.md) | `draft` |
+<!-- candidates:start -->
+| Runbook | Status |
+|---|---|
+| [The logs of one compute do not line up with the controllers. Its clock has drifted](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/diagnostics/compute-clock-skew.md) | `lab-verified` |
+| [VM creation fails platform-wide while instances keep running. Check the shared dependencies first](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/diagnostics/vm-creation-fails-platform-wide-check-shared-dependencies.md) | `draft` |
+| [Instance console (noVNC or SPICE) does not open, fails at once, or shows "invalid or has expired](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/console-not-available-or-disconnects.md) | `draft` |
+| [The guest does not boot or cannot be reached (broken fstab, kernel, network or SSH configuration). Repair its disk in rescue mode](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/rescue-mode-repair-an-unbootable-guest.md) | `lab-verified` |
+| [Instance snapshot never finishes. Task state image_pending_upload or image_uploading, image queued or saving](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/snapshot-stuck-in-image-uploading.md) | `lab-verified` |
+| [CPU steal time on instances with dedicated (pinned) CPUs. Live migration moves the symptom, not the cause](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/cpu-steal-on-pinned-instances.md) | `lab-verified` |
+| [New instance has an address, but no SSH key, no user data, default hostname](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/new-instance-boots-without-metadata.md) | `lab-verified` |
+| [Instance build or live migration fails with "Binding failed for port". Neutron could not bind the port on that host](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/port-binding-failed.md) | `draft` |
+| [After a compute reboot, instances stay SHUTOFF or come back without network](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/after-a-compute-reboot-instances-shutoff-or-without-network.md) | `lab-verified` |
+| [nova-conductor or nova-scheduler is down. What still works, what waits, what fails, and where failed builds go (cell0)](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/nova-conductor-or-scheduler-down-what-still-works.md) | `lab-verified` |
+| [A compute was renamed, reinstalled or re-added. nova-compute refuses to start, or gets no resource provider](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/compute-renamed-or-re-registered-resource-provider-conflict.md) | `draft` |
+| [Boot refused or aborted because the flavor's disk is too small for the image](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/image-larger-than-flavor-disk.md) | `lab-verified` |
+| [Instance fails to boot from volume. ERROR at build, or ACTIVE with no bootable disk](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/scheduling/instance-fails-to-boot-from-volume.md) | `lab-verified` |
+| [Extending an attached volume. Refused, error_extending, or the instance still sees the old size](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/extend-in-use-volume-guest-sees-old-size.md) | `draft` |
+| [Volume stuck in creating, or in error right after create](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/volume-stuck-in-creating-or-error-after-create.md) | `lab-verified` |
+| [Volume stuck in deleting, in error_deleting, or back to available after a delete](https://github.com/OzarLand/openstack-vm-runbooks/blob/main/volumes/volume-stuck-in-deleting-or-error-deleting.md) | `lab-verified` |
+<!-- candidates:end -->
 
 Memos written from a `draft` runbook are welcome: the status is printed on the memo.
 

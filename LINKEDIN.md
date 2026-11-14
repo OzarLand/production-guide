@@ -29,6 +29,14 @@ number. Each caption ends with the link to its runbook and to this repository.
 | PG-18 | Restarting libvirt or the OVS agent: will the instances survive? | [`pg-18-before-restarting-an-agent.png`](dist/pg-18-before-restarting-an-agent.png) | [page](categories/production-operations/before-restarting-an-agent.md#linkedin-kit) |
 | PG-19 | A VM creation failed. Follow one request id, not the timestamps. | [`pg-19-trace-one-request.png`](dist/pg-19-trace-one-request.png) | [page](categories/production-operations/trace-one-request.md#linkedin-kit) |
 | PG-20 | Stale records: project tools first, the database last | [`pg-20-cleaning-up-stale-records.png`](dist/pg-20-cleaning-up-stale-records.png) | [page](categories/production-operations/cleaning-up-stale-records.md#linkedin-kit) |
+| PG-21 | An instance went SHUTOFF by itself. Nova did not stop it: the kernel did. | [`pg-21-shutoff-by-itself.png`](dist/pg-21-shutoff-by-itself.png) | [page](categories/vm-lifecycle/shutoff-by-itself.md#linkedin-kit) |
+| PG-22 | VERIFY_RESIZE is not a stuck state. It is a pending decision. | [`pg-22-resize-not-finished.png`](dist/pg-22-resize-not-finished.png) | [page](categories/vm-lifecycle/resize-not-finished.md#linkedin-kit) |
+| PG-23 | A live migration that never completes: watch one number | [`pg-23-live-migration-never-completes.png`](dist/pg-23-live-migration-never-completes.png) | [page](categories/compute/live-migration-never-completes.md#linkedin-kit) |
+| PG-24 | Every instance on one compute lost its network. Nova says ACTIVE. | [`pg-24-whole-compute-lost-network.png`](dist/pg-24-whole-compute-lost-network.png) | [page](categories/networking/whole-compute-lost-network.md#linkedin-kit) |
+| PG-25 | A security group rule that changes nothing: four things to check | [`pg-25-security-group-rule-has-no-effect.png`](dist/pg-25-security-group-rule-has-no-effect.png) | [page](categories/networking/security-group-rule-has-no-effect.md#linkedin-kit) |
+| PG-26 | 503 from the API: HAProxy is the messenger, not the cause | [`pg-26-api-returns-503.png`](dist/pg-26-api-returns-503.png) | [page](categories/control-plane/api-returns-503.md#linkedin-kit) |
+| PG-27 | 401 with a token that should be valid: the fresh token is lying to you | [`pg-27-401-with-a-valid-token.png`](dist/pg-27-401-with-a-valid-token.png) | [page](categories/control-plane/401-with-a-valid-token.md#linkedin-kit) |
+| PG-28 | "Too many connections": three limits, three messages | [`pg-28-database-connections-exhausted.png`](dist/pg-28-database-connections-exhausted.png) | [page](categories/control-plane/database-connections-exhausted.md#linkedin-kit) |
 
 ## PG-01 · VM stuck in BUILD? Look at the network before you look at Nova.
 
@@ -501,4 +509,195 @@ Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/s
 More memos: https://github.com/OzarLand/production-guide
 
 #OpenStack #Nova #Placement #OperationalExcellence #CloudOperations #OzarLand
+```
+
+## PG-21 · An instance went SHUTOFF by itself. Nova did not stop it: the kernel did.
+
+Image: [`dist/pg-21-shutoff-by-itself.png`](dist/pg-21-shutoff-by-itself.png)
+
+```text
+An instance that was ACTIVE is SHUTOFF. Its owner did not stop it. And yet its action list shows a "stop".
+
+That stop was made by Nova itself, after the fact. The real sequence:
+→ the compute ran out of memory
+→ the kernel's OOM killer killed a QEMU process
+→ libvirt reported the guest as stopped
+→ nova-compute aligned its record by calling the stop API
+
+Nova does not restart the guest. It stays SHUTOFF until someone starts it, and it boots like after a power loss.
+
+The usual root cause is not the instance. It is the inventory: reserved_host_memory_mb left at its 512 MB default on a host whose own services use several GB. The scheduler fills the compute up to a number the host cannot honour.
+
+Source runbook status: draft. Read its limits before acting.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/instance-shut-off-by-host-oom-killer.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Linux #CapacityPlanning #CloudOperations #OzarLand
+```
+
+## PG-22 · VERIFY_RESIZE is not a stuck state. It is a pending decision.
+
+Image: [`dist/pg-22-resize-not-finished.png`](dist/pg-22-resize-not-finished.png)
+
+```text
+After a resize or a cold migration, an instance can sit in three states that look alike on a dashboard and mean very different things.
+
+→ VERIFY_RESIZE, no task state: the resize worked. It waits for a confirm or a revert, and can wait for days.
+→ RESIZE, with a task state: the operation stopped part way. A service died, or a message was lost.
+→ ERROR: a step failed, and the fault says which one.
+
+The first is the one that surprises people. While an instance stays in VERIFY_RESIZE, the old copy is kept on the source and Placement holds resources on both computes. Many of them make hosts look fuller than they are.
+
+And neither way out can be undone: confirm deletes the old copy, revert loses what the guest wrote to its local disks since the resize. That decision belongs to the owner.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/lifecycle/resize-stuck-in-verify-resize-or-failed.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #Placement #CloudOperations #SRE #OzarLand
+```
+
+## PG-23 · A live migration that never completes: watch one number
+
+Image: [`dist/pg-23-live-migration-never-completes.png`](dist/pg-23-live-migration-never-completes.png)
+
+```text
+A live migration starts fine. Then it runs. And runs. Much longer than the others. Eventually the instance is ACTIVE again, on the source, and the migration is marked failed.
+
+Live migration copies memory while the instance keeps running. Every page written again must be copied again. If the instance dirties memory faster than the network copies it, the migration cannot converge.
+
+One number tells you which case you are in, memory_remaining_bytes:
+→ it falls steadily, slowly: a slow or shared migration network
+→ it falls, then hovers: it will not converge without help
+
+The ways out all have a price. Force-complete pauses the instance. Auto-converge throttles its CPU. Post-copy completes, but a network break during that phase reboots the instance.
+
+Source runbook status: draft, not yet reproduced on a lab.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/migration/live-migration-never-completes-or-times-out.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Nova #LiveMigration #Libvirt #CloudOperations #OzarLand
+```
+
+## PG-24 · Every instance on one compute lost its network. Nova says ACTIVE.
+
+Image: [`dist/pg-24-whole-compute-lost-network.png`](dist/pg-24-whole-compute-lost-network.png)
+
+```text
+Every instance on one compute stops answering. Ping, SSH, application traffic: nothing.
+
+Nova shows all of them ACTIVE, power state Running. And Nova is right, from where it stands: it reads the state of instances from libvirt, and libvirt still runs them.
+
+The process that actually switches their traffic, ovs-vswitchd, has stopped.
+
+Three views of the same compute:
+→ Nova: ACTIVE, Running
+→ Neutron: the Open vSwitch agent is not alive (a consequence, and it can take a minute to show)
+→ the compute: ovs-vswitchd does not answer
+
+The trap is to restart the agent, because it is the one reported dead. The agent only programs flows. Start ovs-vswitchd, and the agent recovers by itself.
+
+Monitoring built on Nova states cannot see a data-plane outage.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/ovs-vswitchd-down-on-compute.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Neutron #OpenvSwitch #Monitoring #CloudOperations #OzarLand
+```
+
+## PG-25 · A security group rule that changes nothing: four things to check
+
+Image: [`dist/pg-25-security-group-rule-has-no-effect.png`](dist/pg-25-security-group-rule-has-no-effect.png)
+
+```text
+You add a rule. The port stays closed. Or you remove one, and the traffic still gets through.
+
+Before blaming the agent, remember how security groups work: allow rules only, on a default deny, and the groups on a port add up. Then check four things.
+
+→ The rule is on a group the port does not use, or it does not match: direction, ethertype (an IPv4 rule for IPv6 traffic), port range, or a remote group the traffic does not come from.
+→ Port security is off on the port: no rule applies at all, everything passes.
+→ The agent on the compute is dead: the rule exists in the API, the compute still holds the old ones.
+→ Both instances are in "default": that group admits its own members, by design.
+
+Three of these four are not a platform fault.
+
+Source runbook status: draft.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/networking/security-group-rules-not-applied.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Neutron #SecurityGroups #Networking #CloudOperations #OzarLand
+```
+
+## PG-26 · 503 from the API: HAProxy is the messenger, not the cause
+
+Image: [`dist/pg-26-api-returns-503.png`](dist/pg-26-api-returns-503.png)
+
+```text
+"503 Service Unavailable: No server is available to handle this request."
+
+That sentence does not come from Nova or Keystone. It comes from HAProxy, and it means one precise thing: no backend of that API is passing its health check.
+
+What HAProxy shows tells you where to go next:
+→ every server DOWN with L4CON: the service is down on every controller. Its own log says why.
+→ servers DOWN with L7TOUT or L7STS: the service runs but cannot answer. It is stuck on a dependency.
+→ one server DOWN, the others UP: one controller. Users see nothing.
+→ the VIP on no node, or on two: keepalived, not a backend.
+
+The tempting fix is to restart things at the front door. But restarting a service whose database is unreachable only loses the requests in flight.
+
+Running instances keep running through all of it.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/api-returns-503-haproxy-backend-down-or-vip-flapping.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #HAProxy #ControlPlane #HighAvailability #CloudOperations #OzarLand
+```
+
+## PG-27 · 401 with a token that should be valid: the fresh token is lying to you
+
+Image: [`dist/pg-27-401-with-a-valid-token.png`](dist/pg-27-401-with-a-valid-token.png)
+
+```text
+openstack token issue works. The next command fails with 401. Then works. Then fails.
+
+Behind a load balancer, that pattern means one Keystone node cannot validate tokens the others issued. Two usual reasons, and they do not hit the same tokens:
+
+→ Fernet keys differ between nodes: it breaks tokens older than the token cache, 10 minutes by default. Long-running clients, scripts, Horizon sessions.
+→ A clock is off on one node: it breaks fresh tokens too.
+
+Here is the trap. Keystone caches every token it issues in a cache shared by all nodes. For 10 minutes, any node answers from the cache, without decrypting anything. So your test with a brand new token passes on every node, with diverged keys.
+
+Test with a token older than the cache. And compare key checksums across nodes, not key numbers.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/keystone-401-for-every-request-fernet-keys-or-clock.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #Keystone #Authentication #ControlPlane #CloudOperations #OzarLand
+```
+
+## PG-28 · "Too many connections": three limits, three messages
+
+Image: [`dist/pg-28-database-connections-exhausted.png`](dist/pg-28-database-connections-exhausted.png)
+
+```text
+API calls fail with 500. The logs talk about database connections. The reflex is to raise a limit somewhere.
+
+With MariaDB behind ProxySQL, there are three places where connections can run out, and each has its own message:
+
+→ "QueuePool limit of size ... reached": the SQLAlchemy pool inside one service. The database is fine. That service holds its sessions too long.
+→ "9001 Max connect timeout reached": ProxySQL could not get a backend connection in time.
+→ "1040 Too many connections": MariaDB itself, or ProxySQL's client side.
+
+Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, simply moves the limit one layer down.
+
+And one false friend: 9001 with no writer online is a Galera problem, not a connection problem.
+
+Source runbook status: draft.
+
+Runbook: https://github.com/OzarLand/openstack-vm-runbooks/blob/main/recovery/database-too-many-connections-or-pool-exhausted.md
+More memos: https://github.com/OzarLand/production-guide
+
+#OpenStack #MariaDB #ProxySQL #ControlPlane #CloudOperations #OzarLand
 ```

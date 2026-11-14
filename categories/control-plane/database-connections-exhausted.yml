@@ -1,0 +1,82 @@
+id: PG-28
+category: control-plane
+title: Out of database connections?
+situation: >-
+  API calls fail with 500, and the logs show one of three messages. Each one names a different place where
+  connections ran out.
+
+diagram:
+  type: branches
+  head: [The service log says, Connections ran out in]
+  split: 48
+  rows:
+    - see: "QueuePool limit of size ... reached"
+      mono: true
+      means: One service's own pool
+      sub: Sessions held too long, in that service only
+      tone: warn
+    - see: "9001 Max connect timeout reached"
+      mono: true
+      means: ProxySQL's backend pool
+      sub: No backend connection within 10 s
+      tone: stop
+    - see: "1040 Too many connections"
+      mono: true
+      means: MariaDB, or ProxySQL clients
+      sub: Find who holds the connections
+      tone: stop
+  note: >-
+    Behind ProxySQL, a full MariaDB reaches the services as `9001`. With no writer online, `9001` is Galera.
+
+checks:
+  - label: Which message, in which services
+    hint: grep the three messages in the service logs
+  - label: "MariaDB: limit, current, peak"
+    hint: "SHOW GLOBAL STATUS LIKE 'Threads_connected'"
+  - label: Who holds the connections
+    hint: "information_schema.processlist, grouped by user"
+  - label: "ProxySQL: pool per backend"
+    hint: "stats_mysql_connection_pool, on the node holding the VIP"
+
+caution:
+  - level: destructive
+    text: >-
+      Killing sessions rolls back their open transactions. An instance, a port or a volume can be left
+      half-updated. Last resort.
+  - level: avoid
+    text: >-
+      Raising a pool size before the load is understood. It can simply move the limit down to ProxySQL or
+      MariaDB.
+
+lesson: Three limits, three messages. The message tells you which layer ran out.
+
+runbook:
+  path: recovery/database-too-many-connections-or-pool-exhausted.md
+  status: draft
+  release: "2026.1"
+  also:
+    - recovery/galera-cluster-lost-quorum-database-unavailable.md
+
+scope: >-
+  The runbook is a draft, specific to Kolla-Ansible 2026.1, where every service reaches MariaDB through
+  ProxySQL on the internal VIP; it was only partly reproduced on a lab. The limits and the 10 s timeout are
+  Kolla-Ansible's defaults. Without ProxySQL the messages and the layers differ. Running instances are not
+  affected; computes may be reported down if the conductor cannot write their heartbeat.
+
+linkedin:
+  title: "\"Too many connections\": three limits, three messages"
+  caption: |
+    API calls fail with 500. The logs talk about database connections. The reflex is to raise a limit somewhere.
+
+    With MariaDB behind ProxySQL, there are three places where connections can run out, and each has its own message:
+
+    → "QueuePool limit of size ... reached": the SQLAlchemy pool inside one service. The database is fine. That service holds its sessions too long.
+    → "9001 Max connect timeout reached": ProxySQL could not get a backend connection in time.
+    → "1040 Too many connections": MariaDB itself, or ProxySQL's client side.
+
+    Read the message before touching a setting. A larger pool per process, multiplied by the number of processes and controllers, simply moves the limit one layer down.
+
+    And one false friend: 9001 with no writer online is a Galera problem, not a connection problem.
+
+    Source runbook status: draft.
+  hashtags: [OpenStack, MariaDB, ProxySQL, ControlPlane, CloudOperations, OzarLand]

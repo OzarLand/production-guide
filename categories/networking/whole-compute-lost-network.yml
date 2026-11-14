@@ -1,0 +1,88 @@
+id: PG-24
+category: networking
+title: One compute lost its network?
+situation: >-
+  Every instance of one compute stops answering, while Nova shows them `ACTIVE` and running.
+  `ovs-vswitchd`, the process that switches their traffic, has stopped.
+
+diagram:
+  type: compare
+  caption: Three views of the same compute
+  columns:
+    - kicker: Nova
+      title: ACTIVE, Running
+      icon: cloud
+      tone: mute
+      points:
+        - Reads the state from libvirt
+        - libvirt still runs the guests
+    - kicker: Neutron
+      title: OVS agent not alive
+      icon: network
+      tone: warn
+      points:
+        - A consequence, not the cause
+        - Can take a minute to show
+    - kicker: The compute
+      title: ovs-vswitchd down
+      icon: cable
+      tone: stop
+      points:
+        - "`ovs-appctl version` fails"
+        - "`ovsdb-server` still answers"
+  note: >-
+    Traffic does not stop at once: on a lab it flowed for 6 to 25 s after the stop.
+
+checks:
+  - label: The OVS agent of that compute
+    hint: openstack network agent list --host <compute>
+  - label: Instances still ACTIVE in Nova
+    hint: openstack server list --all-projects --host <compute> --long
+  - label: Is ovs-vswitchd running?
+    hint: container or service status, on the compute
+  - label: Does it answer?
+    hint: timeout 10 ovs-appctl version
+
+caution:
+  - level: avoid
+    text: >-
+      Restarting the Open vSwitch agent. It depends on `ovs-vswitchd`: the dead agent is a consequence, and
+      restarting it will not help.
+  - level: state-changing
+    text: >-
+      Starting `ovs-vswitchd` is enough: the agent notices and programs the flows again. Then find out why
+      it stopped.
+
+lesson: Monitoring built on Nova states cannot see a data-plane outage.
+
+runbook:
+  path: networking/ovs-vswitchd-down-on-compute.md
+  status: lab-verified
+  release: "2026.1"
+  also:
+    - networking/restarting-the-ovs-agent-does-not-cut-instances.md
+
+scope: >-
+  Lab-verified on OpenStack 2026.1 with Kolla-Ansible and ML2/OVS (VXLAN), with the host's own addresses on
+  plain interfaces, not on an OVS bridge. The stop was made on purpose; a real out-of-memory kill or hang of
+  ovs-vswitchd was not observed, and a stuck process was only simulated. OVN, other releases and deployment
+  tools were not tested. With Kolla-Ansible, ovs-appctl runs in the openvswitch_vswitchd container.
+
+linkedin:
+  title: "Every instance on one compute lost its network. Nova says ACTIVE."
+  caption: |
+    Every instance on one compute stops answering. Ping, SSH, application traffic: nothing.
+
+    Nova shows all of them ACTIVE, power state Running. And Nova is right, from where it stands: it reads the state of instances from libvirt, and libvirt still runs them.
+
+    The process that actually switches their traffic, ovs-vswitchd, has stopped.
+
+    Three views of the same compute:
+    → Nova: ACTIVE, Running
+    → Neutron: the Open vSwitch agent is not alive (a consequence, and it can take a minute to show)
+    → the compute: ovs-vswitchd does not answer
+
+    The trap is to restart the agent, because it is the one reported dead. The agent only programs flows. Start ovs-vswitchd, and the agent recovers by itself.
+
+    Monitoring built on Nova states cannot see a data-plane outage.
+  hashtags: [OpenStack, Neutron, OpenvSwitch, Monitoring, CloudOperations, OzarLand]

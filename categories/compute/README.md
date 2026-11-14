@@ -8,3 +8,4 @@
 - **PG-07** [Fence before you evacuate](fence-before-evacuate.md): The precondition for evacuation is fencing, not a missing heartbeat.
 - **PG-08** [Disabled or down? Two fields](disabled-or-down.md): Disabled is a scheduling decision. Down is a belief about liveness.
 - **PG-09** [Emptying a host for patching?](emptying-a-host-for-maintenance.md): Once a host is patched, instances can move onto it, not back. Plan the order.
+- **PG-23** [Live migration never completes?](live-migration-never-completes.md): Watch whether the remaining memory goes down. If it hovers, waiting will not help.
